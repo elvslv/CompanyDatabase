@@ -1,0 +1,4 @@
+*.pyc
+design_files/*.py
+!design_files/__init__.py
+*.bat
