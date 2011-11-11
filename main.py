@@ -1,42 +1,33 @@
-import sys
-import os
+from DB.Db import dbi, User
+from sqlalchemy.orm.exc import NoResultFound
+from DB.dbExceptions import DBException
 
-from PyQt4 import QtGui, QtCore
+class AppUser:
+	def __init__(self, login = None, password = None, admin = False):
+		self.login = login
+		self.password = password
+		self.admin = admin
 
-from design_files.window_main import Ui_MainWindow
-from design_files.dialog_about import Ui_AboutDialog
+class App:
+	instance = None
+	curUser = None
 
-from DB.Db import dbi
+	def __init__(self):
+		pass
 
-class AboutDialog(QtGui.QDialog):
-    def __init__(self, parent):
-        super(AboutDialog, self).__init__(parent)
+	def getUser(self, login, password):
+		try:
+			return dbi.query(User).filter(login == User.login).filter(password == User.password).one()
+		except NoResultFound:
+			raise DBException("NoResultFound")
 
-        self.ui = Ui_AboutDialog()
-        self.ui.setupUi(self)
+	def setCurUser(self, login, password):
+		user = self.getUser(login, password)
+		self.curUser = AppUser(user.login, user.password, user.admin)
 
-class MainWindow(QtGui.QMainWindow):
-    def __init__(self):
-        super(MainWindow, self).__init__()
+def getAppInstance():
+	if App.instance is None:
+		App.instance = App()
+	return App.instance
 
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-
-        self.aboutDialog = AboutDialog(self)
-		
-        self.ui.actionAbout.triggered.connect(self.aboutDialog.open)
-
-class MainApplication(QtGui.QApplication):
-
-    def exec_(self):
-        self.mainwindow = MainWindow()
-        self.mainwindow.showNormal()
-        super(MainApplication, self).exec_()
-
-if __name__ == '__main__':
-    app = QtGui.QApplication(sys.argv)
-    wind = MainWindow()
-    wind.show()
-    sys.exit(app.exec_())
-
-
+appInst = getAppInstance()

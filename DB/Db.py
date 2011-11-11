@@ -65,7 +65,7 @@ class Employee(Base):
 		ForeignKey('users.login', onupdate='CASCADE', ondelete='CASCADE'))
 
 	company = relationship(Company, backref=backref('employees', cascade = "all,delete"))
-	user = relationship(User, backref=backref('employee', useList = False, 
+	user = relationship(User, backref=backref('employee', uselist = False, 
 		cascade = "all,delete"))
 	
 	def __init__(self, name, companyId, login):
@@ -172,11 +172,6 @@ class TasksDependency(Base):
 	slaveId = Column(Integer, ForeignKey('tasks.id'), primary_key=True,
 		index = True)
 
-	master = relationship(Task, foreign_keys=[masterId], 
-		backref=backref('slaves', cascade = "all,delete"))
-	slave = relationship(Project, foreign_keys=[slaveId], 
-		backref=backref('masters', cascade = "all,delete"))
-
 	def __init__(self, masterId, slaveId):
 		self.masterId = masterId
 		self.slaveId = slaveId
@@ -186,9 +181,12 @@ class Database:
 	instance = None
 	engine = create_engine(DB_STRING, convert_unicode=True, echo = True,
 		encoding="utf-8")
-
+	adminInstance = None
+	
 	def __init__(self):
 		Base.metadata.create_all(self.engine)
+		self.Session = scoped_session(sessionmaker(bind=self.engine))
+		self.session = self.Session()
 
 	def commit(self):
 		self.session.commit()
@@ -216,25 +214,32 @@ class Database:
 		Base.metadata.create_all(self.engine)
 
 	
-	def getXbyY(self, x, y, value, mandatory=True):
+	def getXbyY(self, x, y, value):
 		try:
 			cls = globals()[x]
 			return self.query(cls).filter(getattr(cls, y) == value).one()
 		except NoResultFound:
-			if mandatory:    	
-				n =  x + y[0].upper() + y[1:]
-				raise DBException("NoResultFound")
+			raise DBException("NoResultFound")
 			return None
 
-	def addUnique(self, obj, name):
+	def addUnique(self, obj):
 		try:
 			self.add(obj)
 		except IntegrityError:
 			raise DBException("IntegrityError")
 
-def db_instance():
+def getDbInstance():
 	if Database.instance is None:
 		Database.instance = Database()
 	return Database.instance
 
-dbi = db_instance()
+dbi = getDbInstance()
+
+def getAdminInstance():
+	if Database.adminInstance is None:
+		newUser = User('admin', 'admin', True)
+		dbi.addUnique(newUser)
+		Database.adminInstance = newUser
+	return Database.adminInstance
+
+admin = getAdminInstance()
