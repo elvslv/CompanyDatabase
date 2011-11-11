@@ -1,0 +1,15 @@
+Create index empl on Employee(Id);
+Create index emplCompany on Employee(CompanyId);
+Create index comp on Company(Id);
+Create index contrId on Contract(Id);
+Create index contrCompany on Contract(CompanyId);
+Create index contrProject on Contract(ProjectId);
+Create index jobEmpl on Job(EmployeeId);
+Create index jobTask on Job(TaskId);
+Create index proj on Project(Id);
+Create index projEmpl on ProjectEmployee(EmployeeId);
+Create index projProj on ProjectEmployee(ProjectId);
+Create index taskIndex on Task(Id);
+Create index taskProj on Task(ProjectId);
+Create index masterInd on TasksDependency(masterId);
+Create index slaveInd on TasksDependency(slaveId);

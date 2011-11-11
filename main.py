@@ -6,6 +6,8 @@ from PyQt4 import QtGui, QtCore
 from design_files.window_main import Ui_MainWindow
 from design_files.dialog_about import Ui_AboutDialog
 
+from DB.Db import dbi
+
 class AboutDialog(QtGui.QDialog):
     def __init__(self, parent):
         super(AboutDialog, self).__init__(parent)
