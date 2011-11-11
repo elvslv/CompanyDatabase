@@ -21,6 +21,8 @@ class MainApplication(QtGui.QApplication):
 	def login(self, username, password):
 		try:
 			appInst.setCurUser(username, password)
+			self.mainWindow.changeState('Hello, %s! %s' %(username, 
+				"You're admin" if appInst.curUser.admin else ''))
 			return appInst.curUser
 		except DBException, e:
 			self.showError('Invalid login or password')
@@ -69,6 +71,8 @@ class MainWindow(QtGui.QMainWindow):
 		self.ui.actionLogin.triggered.connect(self.loginDialog.open)
 		self.loginDialog.loginSignal.connect(app.login)
 
+	def changeState(self, state):
+		self.ui.curStateLabel.setText(state)
 if __name__ == '__main__':
 	sys.exit(app.exec_())
 
