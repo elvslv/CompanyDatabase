@@ -8,9 +8,25 @@ class AppUser:
 		self.password = password
 		self.admin = admin
 
+	def getTable(self, tableName):
+		for table in dbi.metadata.sorted_tables:
+			if table.name == tableName:
+				return table
+
+	def getHeaders(self, tableName):
+		table = self.getTable(tableName)
+		result = []
+		for column in table.columns:
+			result.append(column.name)
+		return result
+
+	def selectAll(self, tableName):
+		table = self.getTable(tableName)
+		return dbi.query(table).all()
+
 class App:
 	instance = None
-	curUser = None
+	curUser = None 
 
 	def __init__(self):
 		pass

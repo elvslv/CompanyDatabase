@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>632</width>
-    <height>384</height>
+    <width>554</width>
+    <height>376</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>310</y>
+      <y>300</y>
       <width>601</width>
       <height>31</height>
      </rect>
@@ -30,13 +30,23 @@
      <string>Please login</string>
     </property>
    </widget>
+   <widget class="QMdiArea" name="mdiArea">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>521</width>
+      <height>291</height>
+     </rect>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>632</width>
+     <width>554</width>
      <height>21</height>
     </rect>
    </property>
@@ -52,6 +62,15 @@
     <property name="title">
      <string>Tables</string>
     </property>
+    <addaction name="actionViewCompanies"/>
+    <addaction name="actionViewUsers"/>
+    <addaction name="actionViewEmployees"/>
+    <addaction name="actionViewProjects"/>
+    <addaction name="actionViewContracts"/>
+    <addaction name="actionViewProjectEmployees"/>
+    <addaction name="actionViewTasks"/>
+    <addaction name="actionViewJobs"/>
+    <addaction name="actionViewTasksDependencies"/>
    </widget>
    <widget class="QMenu" name="menuReports">
     <property name="title">
@@ -94,6 +113,51 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionViewCompanies">
+   <property name="text">
+    <string>Companies</string>
+   </property>
+  </action>
+  <action name="actionViewUsers">
+   <property name="text">
+    <string>Users</string>
+   </property>
+  </action>
+  <action name="actionViewEmployees">
+   <property name="text">
+    <string>Employees</string>
+   </property>
+  </action>
+  <action name="actionViewProjects">
+   <property name="text">
+    <string>Projects</string>
+   </property>
+  </action>
+  <action name="actionViewContracts">
+   <property name="text">
+    <string>Contracts</string>
+   </property>
+  </action>
+  <action name="actionViewProjectEmployees">
+   <property name="text">
+    <string>ProjectEmployees</string>
+   </property>
+  </action>
+  <action name="actionViewTasks">
+   <property name="text">
+    <string>Tasks</string>
+   </property>
+  </action>
+  <action name="actionViewJobs">
+   <property name="text">
+    <string>Jobs</string>
+   </property>
+  </action>
+  <action name="actionViewTasksDependencies">
+   <property name="text">
+    <string>TasksDependencies</string>
    </property>
   </action>
  </widget>
