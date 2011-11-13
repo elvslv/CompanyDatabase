@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>554</width>
-    <height>376</height>
+    <width>987</width>
+    <height>485</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,8 +20,8 @@
    <widget class="QLabel" name="curStateLabel">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>300</y>
+      <x>0</x>
+      <y>420</y>
       <width>601</width>
       <height>31</height>
      </rect>
@@ -33,10 +33,10 @@
    <widget class="QMdiArea" name="mdiArea">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>521</width>
-      <height>291</height>
+      <x>0</x>
+      <y>0</y>
+      <width>981</width>
+      <height>421</height>
      </rect>
     </property>
    </widget>
@@ -46,7 +46,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>554</width>
+     <width>987</width>
      <height>21</height>
     </rect>
    </property>

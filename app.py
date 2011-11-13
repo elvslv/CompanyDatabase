@@ -6,11 +6,12 @@ from PyQt4 import QtGui, QtCore
 from design_files.window_main import Ui_MainWindow
 from design_files.dialog_about import Ui_AboutDialog
 from design_files.dialog_login import Ui_LoginDialog
-from design_files.widget_table import Ui_ViewTables
 
 from DB.Db import dbi
 from main import appInst
 from DB.dbExceptions import DBException
+from Utils import showMessage
+from Tables import ViewTables
 
 class MainApplication(QtGui.QApplication):
 	def exec_(self):
@@ -26,46 +27,9 @@ class MainApplication(QtGui.QApplication):
 				"You're admin" if appInst.curUser.admin else ''))
 			return appInst.curUser
 		except DBException, e:
-			self.showError('Invalid login or password')
-
-	def showError(self, error):
-		mbox = QtGui.QMessageBox(QtGui.QMessageBox.Critical, 'Error',
-			error, QtGui.QMessageBox.Ok)
-		mbox.exec_()
+			showMessage('Error', 'Invalid login or password')
 
 app = MainApplication(sys.argv)
-
-class ViewTables(QtGui.QWidget):
-	def __init__(self, parent, tableName):
-		super(ViewTables, self).__init__(parent)
-
-		self.ui = Ui_ViewTables()
-		self.ui.setupUi(self)
-
-		self.tableName = tableName
-		self.setWindowTitle(tableName)
-
-		self.fillCells()
-
-	def fillCells(self):
-		if not appInst.curUser:
-			return
-		self.headers = appInst.curUser.getHeaders(self.tableName)
-		
-		self.ui.tableWidget.setColumnCount(len(self.headers))
-		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
-		self.ui.tableWidget.clearContents()
-		values = appInst.curUser.selectAll(self.tableName)
-		self.ui.tableWidget.setRowCount(len(values))
-		row = -1
-		for value in values:
-			row = row + 1
-			column = -1
-			for item in value:
-				column = column + 1
-				newitem = QtGui.QTableWidgetItem(item)
-				print item, newitem
-				self.ui.tableWidget.setItem(row, column, newitem)
 
 class AboutDialog(QtGui.QDialog):
 	def __init__(self, parent):

@@ -177,6 +177,17 @@ class TasksDependency(Base):
 		self.slaveId = slaveId
 
 
+tableClasses = {
+	'Companies': Company, 
+	'Users': User, 
+	'Employees': Employee, 
+	'Projects': Project, 
+	'Contracts': Contract,
+	'ProjectEmployees': ProjectEmployee,
+	'Tasks': Task,
+	'Jobs': Job,
+	'TasksDependencies': TasksDependency}
+
 class Database:
 	instance = None
 	engine = create_engine(DB_STRING, convert_unicode=True, echo = False,
@@ -236,11 +247,11 @@ def getDbInstance():
 
 dbi = getDbInstance()
 
-def getAdminInstance():
-	if Database.adminInstance is None:
-		newUser = User('admin', 'admin', True)
-		dbi.addUnique(newUser)
-		Database.adminInstance = newUser
-	return Database.adminInstance
+#def getAdminInstance():
+#	if Database.adminInstance is None:
+#		newUser = User('admin', 'admin', True)
+#		dbi.addUnique(newUser)
+#		Database.adminInstance = newUser
+#	return Database.adminInstance
 
-admin = getAdminInstance()
+#admin = getAdminInstance()

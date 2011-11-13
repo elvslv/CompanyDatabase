@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>634</width>
+    <height>339</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,9 +18,28 @@
     <rect>
      <x>10</x>
      <y>10</y>
-     <width>371</width>
-     <height>271</height>
+     <width>611</width>
+     <height>291</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="addRecordButton">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>310</y>
+     <width>75</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Add record</string>
+   </property>
+   <property name="default">
+    <bool>false</bool>
+   </property>
+   <property name="flat">
+    <bool>false</bool>
    </property>
   </widget>
  </widget>
