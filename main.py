@@ -24,7 +24,7 @@ class AppUser:
 	def getVisibleHeaders(self, table):
 		result = []
 		for column in table.columns:
-			if not(column.primary_key and column.type is Integer and not column.foreign_keys):
+			if not(column.primary_key and  isinstance(column.type, Integer) and not column.foreign_keys):
 				result.append(column)
 		return result
 
