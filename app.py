@@ -6,12 +6,14 @@ from PyQt4 import QtGui, QtCore
 from design_files.window_main import Ui_MainWindow
 from design_files.dialog_about import Ui_AboutDialog
 from design_files.dialog_login import Ui_LoginDialog
+from design_files.add_admin_window import Ui_addAdminDialog
 
 from DB.Db import dbi
 from main import appInst
 from DB.dbExceptions import DBException
 from Utils import showMessage
 from Tables import ViewTables
+from misc import *
 
 class MainApplication(QtGui.QApplication):
 	def exec_(self):
@@ -21,13 +23,10 @@ class MainApplication(QtGui.QApplication):
 
 	@QtCore.pyqtSlot(str, str)
 	def login(self, username, password):
-		try:
-			appInst.setCurUser(username, password)
-			self.mainWindow.changeState('Hello, %s! %s' %(username, 
-				"You're admin" if appInst.curUser.admin else ''))
-			return appInst.curUser
-		except DBException, e:
-			showMessage('Error', 'Invalid login or password')
+		appInst.setCurUser(username, password)
+		self.mainWindow.changeState('Hello, %s! %s' %(username, 
+			"You're admin" if appInst.curUser.admin else ''))
+		return appInst.curUser
 
 app = MainApplication(sys.argv)
 
@@ -37,6 +36,28 @@ class AboutDialog(QtGui.QDialog):
 
 		self.ui = Ui_AboutDialog()
 		self.ui.setupUi(self)
+
+class AddAdminDialog(QtGui.QDialog):
+	def __init__(self, parent):
+		super(AddAdminDialog, self).__init__(parent)
+
+		self.ui = Ui_addAdminDialog()
+		self.ui.setupUi(self)
+
+		self.ui.buttonBox.button(QtGui.QDialogButtonBox.Ok).setDisabled(True)
+		self.ui.adminPasswordEdit.textChanged.connect(self.checkForEmpty)
+		self.ui.adminUsernameEdit.textChanged.connect(self.checkForEmpty)
+
+		self.accepted.connect(self.addAdmin)
+
+	def checkForEmpty(self):
+		disable = len(self.ui.adminPasswordEdit.text()) < MIN_PASSWORD_LENGTH or\
+			len(self.ui.adminUsernameEdit.text()) < MIN_LOGIN_LENGTH
+		self.ui.buttonBox.button(QtGui.QDialogButtonBox.Ok).setDisabled(disable)
+
+	def addAdmin(self):
+		appInst.addUser(self.ui.adminUsernameEdit.text(), self.ui.adminPasswordEdit.text(), 
+			True)
 
 class LoginDialog(QtGui.QDialog):
 	loginSignal = QtCore.pyqtSignal(str, str)
@@ -66,6 +87,7 @@ class MainWindow(QtGui.QMainWindow):
 
 		self.aboutDialog = AboutDialog(self)
 		self.loginDialog = LoginDialog(self)
+		self.addAdminDialog = AddAdminDialog(self)
 
 		self.ui.actionAbout.triggered.connect(self.aboutDialog.open)
 		self.ui.actionLogin.triggered.connect(self.loginDialog.open)
@@ -81,6 +103,9 @@ class MainWindow(QtGui.QMainWindow):
 		self.ui.actionViewTasksDependencies.triggered.connect(self.showTableTrigger('TasksDependencies'))
 		
 		self.loginDialog.loginSignal.connect(app.login)
+
+		if not len(appInst.admins()):
+			self.addAdminDialog.open()
 
 	def changeState(self, state):
 		self.ui.curStateLabel.setText(state)

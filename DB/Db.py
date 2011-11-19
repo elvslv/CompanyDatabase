@@ -31,7 +31,6 @@ DB_STRING = """mysql+mysqldb://%s:%s@%s:%d/%s""" % \
 
 class Company(Base):
 	__tablename__ = 'Companies'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
@@ -43,7 +42,6 @@ class Company(Base):
 
 class User(Base):
 	__tablename__ = 'Users'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	login = Column(String(MAX_LOGIN_LENGTH), primary_key = True)
 	password = Column(Text, nullable = False)
@@ -56,7 +54,6 @@ class User(Base):
 
 class Employee(Base):
 	__tablename__ = 'Employees'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
@@ -75,7 +72,6 @@ class Employee(Base):
 
 class Project(Base):
 	__tablename__ = 'Projects'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
@@ -89,7 +85,6 @@ class Project(Base):
 
 class Contract(Base):
 	__tablename__ = 'Contracts'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
 	companyId = fkeyIndex('Companies.id')
@@ -106,8 +101,6 @@ class Contract(Base):
 
 class ProjectEmployee(Base):
 	__tablename__ = 'ProjectEmployees'
-	__table_args__ = {'mysql_engine':'InnoDB'}
-
 
 	employeeId = Column(Integer, ForeignKey('Employees.id'), primary_key=True,
 		index = True)
@@ -125,7 +118,6 @@ class ProjectEmployee(Base):
 
 class Task(Base):
 	__tablename__ = 'Tasks'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
@@ -142,7 +134,6 @@ class Task(Base):
 
 class Job(Base):
 	__tablename__ = 'Jobs'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	employeeId = Column(Integer, ForeignKey('Employees.id'), primary_key=True, 
 		index = True)
@@ -165,7 +156,6 @@ class Job(Base):
 
 class TasksDependency(Base):
 	__tablename__ = 'TasksDependencies'
-	__table_args__ = {'mysql_engine':'InnoDB'}
 	
 	masterId = Column(Integer, ForeignKey('Tasks.id'), primary_key=True, 
 		index = True)
@@ -226,7 +216,7 @@ class Database:
 		Base.metadata.create_all(self.engine)
 
 	
-	def getXbyY(self, x, y, value):
+	def getXbyY(self, x, y, value, msg = None):
 		try:
 			cls = globals()[x]
 			return self.query(cls).filter(getattr(cls, y) == value).one()
@@ -234,11 +224,11 @@ class Database:
 			raise DBException("NoResultFound")
 			return None
 
-	def addUnique(self, obj):
+	def addUnique(self, obj, msg = None):
 		try:
 			self.add(obj)
 		except IntegrityError:
-			raise DBException("IntegrityError")
+			raise DBException(msg if msg else "IntegrityError")
 
 def getDbInstance():
 	if Database.instance is None:
