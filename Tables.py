@@ -29,7 +29,7 @@ class ChangeRecord(QtGui.QDialog):
 		self.edits = []
 		for field in self.fields:
 			label = QtGui.QLabel(self)
-			label.setText(field.name)
+			label.setText(appInst.getColumnName(field))
 			self.gbox.addWidget(label, row, 0, 1, 1)
 			edit = self.getEdit(field, self.rec[field.name] if self.rec else None)
 			self.edits.append(edit)
@@ -182,7 +182,7 @@ class ViewTables(QtGui.QWidget):
 		self.fillCells()
 
 	def fillHeaders(self):
-		self.headers = appInst.getHeaders(self.tableName)
+		self.headers = appInst.getHeadersWithForeignValues(self.tableName)
 		self.ui.tableWidget.setColumnCount(len(self.headers))
 		self.ui.tableWidget.verticalHeader().setVisible(False)
 		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
@@ -191,7 +191,7 @@ class ViewTables(QtGui.QWidget):
 
 	def fillCells(self):
 		self.ui.tableWidget.clearContents()
-		values = appInst.selectAll(self.tableName)
+		values = appInst.selectAllWithForeignValues(self.tableName)
 		self.ui.tableWidget.setRowCount(len(values))
 		row = -1
 		for value in values:

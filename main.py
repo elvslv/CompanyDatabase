@@ -62,6 +62,13 @@ class App:
 			result.append(column.name)
 		return result
 
+	def getHeadersWithForeignValues(self, tableName):
+		table = self.getTable(tableName)
+		columns = []
+		for column in table.columns:
+			columns.append(self.getColumnName(column))
+		return columns
+
 	def getVisibleHeaders(self, table):
 		result = []
 		for column in table.columns:
@@ -69,9 +76,34 @@ class App:
 				result.append(column)
 		return result
 
+	def getColumnName(self, column):
+		if column.foreign_keys:
+			col = list(column.foreign_keys)[0].column
+			return col.table.name if col.name == 'id' else col.name
+		else:
+			return column.name
+	
 	def selectAll(self, tableName):
 		table = self.getTable(tableName)
 		return dbi.query(table).all()
+
+	def selectAllWithForeignValues(self, tableName):
+		table = self.getTable(tableName)
+		columns = []
+		filterStmts = dict()
+		for column in table.columns:
+			if column.foreign_keys:
+				foreignColumn = list(column.foreign_keys)[0].column
+				filterStmts[column] = foreignColumn
+				if foreignColumn.name == 'id':
+					foreignColumn = foreignColumn.table.c['name']
+				columns.append(foreignColumn)
+			else:
+				columns.append(column)
+		q = dbi.query(*columns)
+		for attr, value in filterStmts.items():
+			q = q.filter(attr == value)
+		return q.all()
 
 	def getRecord(self, tableName, keys):
 		table = self.getTable(tableName)
