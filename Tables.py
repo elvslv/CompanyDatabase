@@ -9,7 +9,8 @@ from PyQt4 import QtGui, QtCore
 class ChangeRecord(QtGui.QDialog):
 	def __init__(self, parent, tableName, exists = False, keys = None):
 		super(ChangeRecord, self).__init__(parent)
-		
+
+		self.tableView = parent
 		self.setModal(True)
 		self.gbox = QtGui.QGridLayout(self)
 		self.buttonBox = QtGui.QDialogButtonBox(self)
@@ -111,6 +112,8 @@ class ChangeRecord(QtGui.QDialog):
 		for i, edit in enumerate(self.edits):
 			values.append(self.getValue(edit))
 		appInst.curUser.insert(self.table, values)
+		self.tableView.fillCells()
+		self.close()
 		showMessage('EEE', 'added')
 
 class ChangeProject(ChangeRecord):
@@ -175,17 +178,19 @@ class ViewTables(QtGui.QWidget):
 		self.tableName = tableName
 		self.setWindowTitle(tableName)
 
+		self.fillHeaders()
 		self.fillCells()
 
-	def fillCells(self):
-		if not appInst.curUser:
-			return
-		self.headers = appInst.curUser.getHeaders(self.tableName)
-		
+	def fillHeaders(self):
+		self.headers = appInst.getHeaders(self.tableName)
 		self.ui.tableWidget.setColumnCount(len(self.headers))
 		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
+		if not (appInst.curUser and appInst.curUser.canUpdate(self.tableName)):
+			self.ui.addRecordButton.setDisabled(True)
+
+	def fillCells(self):
 		self.ui.tableWidget.clearContents()
-		values = appInst.curUser.selectAll(self.tableName)
+		values = appInst.selectAll(self.tableName)
 		self.ui.tableWidget.setRowCount(len(values))
 		row = -1
 		for value in values:
@@ -195,10 +200,6 @@ class ViewTables(QtGui.QWidget):
 				column = column + 1
 				newitem = QtGui.QTableWidgetItem(item)
 				self.ui.tableWidget.setItem(row, column, newitem)
-
-		if not appInst.curUser.admin:
-			self.ui.addRecordButton.setDisabled(True)
-
 
 	def addRecord(self):
 		rec = ChangeRecord(self, self.tableName)

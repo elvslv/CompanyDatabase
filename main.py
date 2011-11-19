@@ -9,6 +9,9 @@ class AppUser:
 		self.password = password
 		self.admin = admin
 
+	def canUpdate(self, tableName):
+		return True
+
 	def getTable(self, tableName):
 		return appInst.getTable(tableName)
 
@@ -16,7 +19,7 @@ class AppUser:
 		return appInst.getHeaders(tableName)
 
 	def getVisibleHeaders(self, table):
-		return appInst.getVisibleHeaders(tableName)
+		return appInst.getVisibleHeaders(table)
 
 	def selectAll(self, tableName):
 		return appInst.selectAll(tableName)
@@ -28,7 +31,7 @@ class AppUser:
 		return appInst.getForeignValues(table, field)
 
 	def insert(self, table, values):
-		return appInst.getForeignValues(table, values)
+		return appInst.insert(table, values)
 	
 class App:
 	instance = None
