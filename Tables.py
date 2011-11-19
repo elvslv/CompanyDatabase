@@ -98,9 +98,9 @@ class ChangeRecord(QtGui.QDialog):
 		if isinstance(edit, QtGui.QLineEdit):
 			return edit.text()
 		if isinstance(edit, QtGui.QComboBox):
-			val = edit.itemData(edit.currentIndex())
+			val = QtCore.QVariant.toString(edit.itemData(edit.currentIndex()))
 			if val is None:
-				return edit.currentText()
+				val = edit.currentText()
 			return val
 		if isinstance(edit, QtGui.QCheckBox):
 			return edit.isChecked()
