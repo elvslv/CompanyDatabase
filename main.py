@@ -81,10 +81,11 @@ class App:
 		foreignColumn = list(field.foreign_keys)[0].column
 		foreignTable = foreignColumn.table
 		foreignColumnName = foreignColumn.name
+		columnWithName = 'name' if foreignColumnName == 'id' else foreignColumnName
 
 		result = []
-		for key, val in dbi.query(field, foreignTable.c[foreignColumnName]).filter(field == 
-			foreignTable.c[foreignColumnName]):
+		q = dbi.query(foreignTable.c[foreignColumnName], foreignTable.c[columnWithName]).all()
+		for key, val in q:
 			result.append([key, val])
 
 		return result	

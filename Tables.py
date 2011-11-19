@@ -184,6 +184,7 @@ class ViewTables(QtGui.QWidget):
 	def fillHeaders(self):
 		self.headers = appInst.getHeaders(self.tableName)
 		self.ui.tableWidget.setColumnCount(len(self.headers))
+		self.ui.tableWidget.verticalHeader().setVisible(False)
 		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
 		if not (appInst.curUser and appInst.curUser.canUpdate(self.tableName)):
 			self.ui.addRecordButton.setDisabled(True)
@@ -198,7 +199,7 @@ class ViewTables(QtGui.QWidget):
 			column = -1
 			for item in value:
 				column = column + 1
-				newitem = QtGui.QTableWidgetItem(item)
+				newitem = QtGui.QTableWidgetItem(str(item))
 				self.ui.tableWidget.setItem(row, column, newitem)
 
 	def addRecord(self):
