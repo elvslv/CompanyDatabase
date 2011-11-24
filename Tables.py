@@ -104,7 +104,8 @@ class ChangeRecord(QtGui.QDialog):
 			return val
 		if isinstance(edit, QtGui.QCheckBox):
 			return edit.isChecked()
-		##todo: datetimeedit
+		if isinstance(edit, QtGui.QDateTimeEdit):
+			return edit.dateTime().toString(QtCore.Qt.ISODate)
 		showMessage('Error', 'Unknown edit type')
 	
 	def addRecord(self):
