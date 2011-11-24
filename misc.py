@@ -14,3 +14,8 @@ ACTIVITY_CONTRACT_FINISHED = 3
 
 ROLE_DEVELOPER = 0
 ROLE_MANAGER = 1
+
+stage = ["Project isn't started", 'Project started', 'Project finished']
+activity = ["Conract isn't made", "Contract is made", "Contract is terminated", 
+	"Contract finished"]
+role = ["Developer", "Manager"]

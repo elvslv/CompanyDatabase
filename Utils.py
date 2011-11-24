@@ -4,3 +4,6 @@ def showMessage(title, message):
 	mbox = QtGui.QMessageBox(QtGui.QMessageBox.Critical, title,
 		message, QtGui.QMessageBox.Ok)
 	mbox.exec_()
+
+def isEnum(field):
+	return field.name in ('activity', 'stage', 'role')

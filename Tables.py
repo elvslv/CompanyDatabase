@@ -2,8 +2,8 @@ import sqlalchemy
 from design_files.widget_table import Ui_ViewTables
 from main import appInst
 from sqlalchemy import *
-from Utils import showMessage
-
+from Utils import *
+from misc import *
 from PyQt4 import QtGui, QtCore
 
 class ChangeRecord(QtGui.QDialog):
@@ -51,6 +51,8 @@ class ChangeRecord(QtGui.QDialog):
 			return self.createDateTimeEdit(field, val)
 		if isinstance(field.type, String) or isinstance(field.type, Text):
 			return self.createLineEdit(field, val)
+		if (field.name in ('activity', 'stage', 'role')):
+			return self.createComboBox(field, val)
 		if isinstance(field.type, Integer):
 			return self.createIntegerBox(field, val)
 
@@ -76,9 +78,15 @@ class ChangeRecord(QtGui.QDialog):
 
 	def createComboBox(self, field, val):
 		result = QtGui.QComboBox(self)
-		items = appInst.curUser.getForeignValues(self.table, field)
+		if isEnum(field):
+			items = globals()[field.name]
+		else:
+			items = appInst.curUser.getForeignValues(self.table, field)
 		for i, item in enumerate(items):
-			result.addItem(item[1], item[0])
+			if field.name in ('activity', 'stage', 'role'):
+				result.addItem(item, i)
+			else:
+				result.addItem(item[1], item[0])
 			if not(val == None) and (item[0] == val):
 				result.setCurrentIndex(i)
 		return result
@@ -115,56 +123,6 @@ class ChangeRecord(QtGui.QDialog):
 		appInst.curUser.insert(self.table, values)
 		self.tableView.fillCells()
 		self.close()
-		showMessage('EEE', 'added')
-
-class ChangeProject(ChangeRecord):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-
-	def createIntegerBox(self, field, val):
-		if field.name != 'stage':
-			return super().createIntegerBox(field, val)
-		result = QtGui.QComboBox(self)
-		stages = ['project is not started', 'project is started', 'project is finished']
-		
-		for i, item in enumerate(stages):
-			result.addItem(item, i)
-			if val is not None and i == val:
-				result.setIndex(i)
-		return result
-
-class ChangeContract(ChangeRecord):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-
-	def createIntegerBox(self, field, val):
-		if field.name != 'activity':
-			return super().createIntegerBox(field, val)
-		result = QtGui.QComboBox(self)
-		activities = ['contract is not made', 'contract is made', 'contract is terminated',
-			'contract is finished']
-		
-		for i, item in enumerate(activities):
-			result.addItem(item, i)
-			if val is not None and i == val:
-				result.setIndex(i)
-		return result
-
-class ChangeProjectEmployee(ChangeRecord):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-
-	def createIntegerBox(self, field, val):
-		if field.name != 'role':
-			return super().createIntegerBox(field, val)
-		result = QtGui.QComboBox(self)
-		activities = ['developer', 'manager']
-		
-		for i, item in enumerate(activities):
-			result.addItem(item, i)
-			if val is not None and i == val:
-				result.setIndex(i)
-		return result
 
 		
 class ViewTables(QtGui.QWidget):
@@ -192,6 +150,7 @@ class ViewTables(QtGui.QWidget):
 
 	def fillCells(self):
 		self.ui.tableWidget.clearContents()
+		fields = appInst.getVisibleHeaders(appInst.getTable(self.tableName))
 		values = appInst.selectAllWithForeignValues(self.tableName)
 		self.ui.tableWidget.setRowCount(len(values))
 		row = -1
@@ -200,7 +159,10 @@ class ViewTables(QtGui.QWidget):
 			column = -1
 			for item in value:
 				column = column + 1
-				newitem = QtGui.QTableWidgetItem(str(item))
+				it = item
+				if isEnum(fields[column]):
+					it = globals()[fields[column].name][int(item)]
+				newitem = QtGui.QTableWidgetItem(str(it))
 				self.ui.tableWidget.setItem(row, column, newitem)
 
 	def addRecord(self):

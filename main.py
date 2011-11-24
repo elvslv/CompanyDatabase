@@ -2,6 +2,7 @@ from DB.Db import *
 from sqlalchemy.orm.exc import NoResultFound
 from DB.dbExceptions import DBException
 from sqlalchemy import *
+from Utils import *
 
 class AppUser:
 	def __init__(self, login = None, password = None, admin = False):
