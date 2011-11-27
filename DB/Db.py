@@ -30,7 +30,7 @@ DB_STRING = """mysql+mysqldb://%s:%s@%s:%d/%s""" % \
 
 
 class Company(Base):
-	__tablename__ = 'Companies'
+	__tablename__ = 'companies'
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
@@ -41,7 +41,7 @@ class Company(Base):
 		self.details = details
 
 class User(Base):
-	__tablename__ = 'Users'
+	__tablename__ = 'users'
 
 	login = Column(String(MAX_LOGIN_LENGTH), primary_key = True)
 	password = Column(Text, nullable = False)
@@ -53,16 +53,17 @@ class User(Base):
 		self.admin = admin
 
 class Employee(Base):
-	__tablename__ = 'Employees'
+	__tablename__ = 'employees'
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
-	companyId = fkeyIndex('Companies.id')
+	companyId = fkeyIndex('companies.id')
 	login = Column(String(MAX_LOGIN_LENGTH), 
-		ForeignKey('Users.login', onupdate='CASCADE', ondelete='CASCADE'))
+		ForeignKey('users.login', onupdate='CASCADE', ondelete='CASCADE'), 
+		unique = True)
 
-	company = relationship(Company, backref=backref('Employees', cascade = "all,delete"))
-	user = relationship(User, backref=backref('employee', uselist = False, 
+	company = relationship(Company, backref=backref('employees', cascade = "all,delete"))
+	user = relationship(User, backref=backref('employees', uselist = False, 
 		cascade = "all,delete"))
 	
 	def __init__(self, name, companyId, login):
@@ -71,7 +72,7 @@ class Employee(Base):
 		self.login = login
 
 class Project(Base):
-	__tablename__ = 'Projects'
+	__tablename__ = 'projects'
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
@@ -84,32 +85,32 @@ class Project(Base):
 		self.stage = stage
 
 class Contract(Base):
-	__tablename__ = 'Contracts'
+	__tablename__ = 'contracts'
 
 	id = pkeyIndex()
-	companyId = fkeyIndex('Companies.id')
-	projectId = fkeyIndex('Projects.id')
+	companyId = fkeyIndex('companies.id')
+	projectId = fkeyIndex('projects.id')
 	activity = Column(Integer, default = ACTIVITY_CONTRACT_NOT_MADE)
 
-	company = relationship(Company, backref=backref('Contracts', cascade = "all,delete"))
-	project = relationship(Project, backref=backref('Contracts', cascade = "all,delete"))
+	company = relationship(Company, backref=backref('contracts', cascade = "all,delete"))
+	project = relationship(Project, backref=backref('contracts', cascade = "all,delete"))
 	
-	def __init__(self, companyId, projectId, stage = ACTIVITY_CONTRACT_NOT_MADE):
+	def __init__(self, companyId, projectId, activity = ACTIVITY_CONTRACT_NOT_MADE):
 		self.companyId = companyId
 		self.projectId = projectId
 		self.activity = activity
 
 class ProjectEmployee(Base):
-	__tablename__ = 'ProjectEmployees'
+	__tablename__ = 'projectEmployees'
 
-	employeeId = Column(Integer, ForeignKey('Employees.id'), primary_key=True,
+	employeeId = Column(Integer, ForeignKey('employees.id'), primary_key=True,
 		index = True)
-	projectId = Column(Integer, ForeignKey('Projects.id'), primary_key=True,
+	projectId = Column(Integer, ForeignKey('projects.id'), primary_key=True,
 		index = True)
 	role = Column(Integer, default = ROLE_DEVELOPER)
 
-	employee = relationship(Employee, backref=backref('Projects', cascade = "all,delete"))
-	project = relationship(Project, backref=backref('Employees', cascade = "all,delete"))
+	employee = relationship(Employee, backref=backref('projects', cascade = "all,delete"))
+	project = relationship(Project, backref=backref('employees', cascade = "all,delete"))
 	
 	def __init__(self, employeeId, projectId, role = ROLE_DEVELOPER):
 		self.employeeId = employeeId
@@ -117,15 +118,15 @@ class ProjectEmployee(Base):
 		self.role = role
 
 class Task(Base):
-	__tablename__ = 'Tasks'
+	__tablename__ = 'tasks'
 
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
-	projectId = fkeyIndex('Projects.id')
+	projectId = fkeyIndex('projects.id')
 	plannedTime = Column(Integer, nullable = False)
 	completionDate = Column(DateTime)
 
-	project = relationship(Project, backref=backref('Tasks', cascade = "all,delete"))
+	project = relationship(Project, backref=backref('tasks', cascade = "all,delete"))
 	
 	def __init__(self, name, projectId, plannedTime):
 		self.name = name
@@ -133,18 +134,18 @@ class Task(Base):
 		self.plannedTime = plannedTime
 
 class Job(Base):
-	__tablename__ = 'Jobs'
+	__tablename__ = 'jobs'
 
-	employeeId = Column(Integer, ForeignKey('Employees.id'), primary_key=True, 
+	employeeId = Column(Integer, ForeignKey('employees.id'), primary_key=True, 
 		index = True)
-	taskId = Column(Integer, ForeignKey('Tasks.id'), primary_key=True, 
+	taskId = Column(Integer, ForeignKey('tasks.id'), primary_key=True, 
 		index = True)
 	startDate = Column(DateTime)
 	completionDate = Column(DateTime)
 	description = Column(Text)
 
-	employee = relationship(Employee, backref=backref('Jobs', cascade = "all,delete"))
-	task = relationship(Task, backref=backref('Jobs', cascade = "all,delete"))
+	employee = relationship(Employee, backref=backref('jobs', cascade = "all,delete"))
+	task = relationship(Task, backref=backref('jobs', cascade = "all,delete"))
 
 	def __init__(self, employeeId, projectId, startDate, completionDate, description):
 		self.employeeId = employeeId
@@ -155,11 +156,11 @@ class Job(Base):
 
 
 class TasksDependency(Base):
-	__tablename__ = 'TasksDependencies'
+	__tablename__ = 'tasksDependencies'
 	
-	masterId = Column(Integer, ForeignKey('Tasks.id'), primary_key=True, 
+	masterId = Column(Integer, ForeignKey('tasks.id'), primary_key=True, 
 		index = True)
-	slaveId = Column(Integer, ForeignKey('Tasks.id'), primary_key=True,
+	slaveId = Column(Integer, ForeignKey('tasks.id'), primary_key=True,
 		index = True)
 
 	def __init__(self, masterId, slaveId):
@@ -168,15 +169,15 @@ class TasksDependency(Base):
 
 
 tableClasses = {
-	'Companies': Company, 
-	'Users': User, 
-	'Employees': Employee, 
-	'Projects': Project, 
-	'Contracts': Contract,
-	'ProjectEmployees': ProjectEmployee,
-	'Tasks': Task,
-	'Jobs': Job,
-	'TasksDependencies': TasksDependency}
+	'companies': Company, 
+	'users': User, 
+	'employees': Employee, 
+	'projects': Project, 
+	'contracts': Contract,
+	'projectEmployees': ProjectEmployee,
+	'tasks': Task,
+	'jobs': Job,
+	'tasksDependencies': TasksDependency}
 
 class Database:
 	instance = None
@@ -186,12 +187,22 @@ class Database:
 	
 	def __init__(self):
 		Base.metadata.create_all(self.engine)
-		self.Session = scoped_session(sessionmaker(bind=self.engine))
+		self.Session = sessionmaker(bind=self.engine, autocommit=True)
 		self.session = self.Session()
 		self.metadata = Base.metadata
 
 	def commit(self):
 		self.session.commit()
+
+	def merge(self, obj):
+		return self.session.merge(obj)
+
+	def save(self, obj):
+		self.session.save(obj)
+
+	def flush(self, obj):
+		self.session.flush()
+		self.session.refresh(obj)
 
 	def rollback(self):
 		self.session.rollback()

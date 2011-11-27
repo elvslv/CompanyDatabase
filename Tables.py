@@ -7,7 +7,7 @@ from misc import *
 from PyQt4 import QtGui, QtCore
 
 class ChangeRecord(QtGui.QDialog):
-	def __init__(self, parent, tableName, exists = False, keys = None):
+	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecord, self).__init__(parent)
 
 		self.tableView = parent
@@ -22,16 +22,17 @@ class ChangeRecord(QtGui.QDialog):
 		self.fields = appInst.curUser.getVisibleHeaders(self.table)
 		
 		self.rec = None
-		if exists:
+		self.keys = keys
+		if keys:
 			self.rec = appInst.curUser.getRecord(tableName, keys)
-
 		row = 0
 		self.edits = []
-		for field in self.fields:
+		for i, field in enumerate(self.fields):
 			label = QtGui.QLabel(self)
 			label.setText(appInst.getColumnName(field))
 			self.gbox.addWidget(label, row, 0, 1, 1)
-			edit = self.getEdit(field, self.rec[field.name] if self.rec else None)
+			edit = self.getEdit(field, self.rec[i] if self.rec else None)
+			edit.field = field.name
 			self.edits.append(edit)
 			self.gbox.addWidget(edit, row, 1, 1, 1)
 			row += 1
@@ -98,7 +99,10 @@ class ChangeRecord(QtGui.QDialog):
 		return result
 		
 	def checkCorrectness(self):
-		self.addRecord()
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
 
 	def getValue(self, edit):
 		if isinstance(edit, QtGui.QSpinBox):
@@ -119,11 +123,18 @@ class ChangeRecord(QtGui.QDialog):
 	def addRecord(self):
 		values = list()
 		for i, edit in enumerate(self.edits):
-			values.append(self.getValue(edit))
+			values.append({'name': edit.field, 'value': self.getValue(edit)})
 		appInst.curUser.insert(self.table, values)
 		self.tableView.fillCells()
 		self.close()
 
+	def editRecord(self):
+		values = dict()
+		for i, edit in enumerate(self.edits):
+			values[edit.field] = self.getValue(edit)
+		appInst.curUser.update(self.table, self.keys, values)
+		self.tableView.fillCells()
+		self.close()
 		
 class ViewTables(QtGui.QWidget):
 	def __init__(self, parent, tableName):
@@ -133,7 +144,7 @@ class ViewTables(QtGui.QWidget):
 		self.ui.setupUi(self)
 
 		self.ui.addRecordButton.clicked.connect(self.addRecord)
-
+		self.ui.tableWidget.cellDoubleClicked.connect(self.editRecord)
 		self.tableName = tableName
 		self.setWindowTitle(tableName)
 
@@ -164,7 +175,29 @@ class ViewTables(QtGui.QWidget):
 					it = globals()[fields[column].name][int(item)]
 				newitem = QtGui.QTableWidgetItem(str(it))
 				self.ui.tableWidget.setItem(row, column, newitem)
-
+				
+		self.primaryKeys = self.findPrimaryKeys()
+		
+	def findPrimaryKeys(self):
+		fields = appInst.getHeaders(self.tableName)
+		values = appInst.selectAll(self.tableName)
+		result = list()
+		
+		for value in values:
+			pk = list()
+			column = -1
+			for item in value:
+				column += 1
+				if fields[column].primary_key:
+					pk.append({'name': fields[column].name, 'value': item})
+			result.append(pk)
+			
+		return result
+		
 	def addRecord(self):
 		rec = ChangeRecord(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecord(self, self.tableName, self.primaryKeys[row])
 		rec.open()

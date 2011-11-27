@@ -33,6 +33,9 @@ class AppUser:
 
 	def insert(self, table, values):
 		return appInst.insert(table, values)
+		
+	def update(self, table, keys, values):
+		return appInst.update(table, keys, values)
 	
 class App:
 	instance = None
@@ -60,20 +63,25 @@ class App:
 		table = self.getTable(tableName)
 		result = []
 		for column in table.columns:
-			result.append(column.name)
+			result.append(column)
 		return result
+
+	def isVisible(self, column):
+		return not(column.primary_key and isinstance(column.type, Integer) and\
+			not column.foreign_keys)
 
 	def getHeadersWithForeignValues(self, tableName):
 		table = self.getTable(tableName)
 		columns = []
 		for column in table.columns:
-			columns.append(self.getColumnName(column))
+			if self.isVisible(column):
+				columns.append(self.getColumnName(column))
 		return columns
 
 	def getVisibleHeaders(self, table):
 		result = []
 		for column in table.columns:
-			if not(column.primary_key and isinstance(column.type, Integer) and not column.foreign_keys):
+			if self.isVisible(column):
 				result.append(column)
 		return result
 
@@ -93,6 +101,8 @@ class App:
 		columns = []
 		filterStmts = dict()
 		for column in table.columns:
+			if not(self.isVisible(column)):
+				continue
 			if column.foreign_keys:
 				foreignColumn = list(column.foreign_keys)[0].column
 				filterStmts[column] = foreignColumn
@@ -108,7 +118,10 @@ class App:
 
 	def getRecord(self, tableName, keys):
 		table = self.getTable(tableName)
-		return dbi.query(table).filter(table[keys[0]['fieldName']] == keys[0]['value']).one()
+		query = dbi.query(*self.getVisibleHeaders(table))
+		for key in keys:
+			query = query.filter(table.c[key['name']] == key['value'])
+		return query.one()
 
 	def getForeignValues(self, table, field):
 		foreignColumn = list(field.foreign_keys)[0].column
@@ -125,8 +138,16 @@ class App:
 
 	def insert(self, table, values):
 		obj = tableClasses[table.name]
-		tmp = obj(*values)
+		vals = [value['value'] for value in values]
+		tmp = obj(*vals)
 		dbi.add(tmp)
+
+	def update(self, table, keys, values):
+		table = tableClasses[table.name]
+		obj = dbi.query(table)
+		for key in keys:
+			obj = obj.filter(getattr(table, key['name']) == key['value'])
+		obj.update(values)
 
 	def addUser(self, username, password, isAdmin):
 		dbi.addUnique(User(username, password, isAdmin), 'User with the same login already exists')
