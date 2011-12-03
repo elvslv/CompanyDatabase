@@ -5,6 +5,7 @@ from sqlalchemy import *
 from Utils import *
 from misc import *
 from PyQt4 import QtGui, QtCore
+from DB.Db import *
 
 class ChangeRecord(QtGui.QDialog):
 	addUserSignal = QtCore.pyqtSignal(str)
@@ -102,6 +103,9 @@ class ChangeRecord(QtGui.QDialog):
 		return result
 		
 	def checkCorrectness(self):
+		if not self.editsAreNotEmpty:
+			showMessage('Error', 'Fields must not be empty')
+			return
 		if self.rec:
 			self.editRecord()
 		else:
@@ -122,18 +126,19 @@ class ChangeRecord(QtGui.QDialog):
 		if isinstance(edit, QtGui.QDateTimeEdit):
 			return edit.dateTime().toString(QtCore.Qt.ISODate)
 		showMessage('Error', 'Unknown edit type')
+
+	def getValues(self):
+		self.values = list()
+		for i, edit in enumerate(self.edits):
+			self.values.append({'name': edit.field, 'value': self.getValue(edit)})
 	
 	def addRecord(self):
-		values = list()
-		for i, edit in enumerate(self.edits):
-			values.append({'name': edit.field, 'value': self.getValue(edit)})
-		appInst.curUser.insert(self.table, values)
+		self.getValues()
+		appInst.curUser.insert(self.table, self.values)
 		try:
 			self.tableView.fillCells()
 		except:
 			pass
-		if self.edits[0].field == 'login':
-			self.tableView.addUserSignal.emit(values[0]['value'])
 		self.close()
 
 	def editRecord(self):
@@ -143,12 +148,28 @@ class ChangeRecord(QtGui.QDialog):
 		appInst.curUser.update(self.table, self.keys, values)
 		self.tableView.fillCells()
 		self.close()
+
+	def editsAreNotEmpty(self):
+		correct = True
+		for edit in self.edits:
+			if isinstance(edit, QtGui.QSpinBox):
+				correct = correct and len(edit.value())
+			if isinstance(edit, QtGui.QLineEdit):
+				correct = correct and len(edit.text())
+			if isinstance(edit, QtGui.QComboBox):
+				correct = correct and len(edit.currentText())
+			if isinstance(edit, QtGui.QDateTimeEdit):
+				correct = correct and len(edit.dateTime().toString(QtCore.Qt.ISODate))
+		return correct
 		
 class ChangeRecordCompany(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecordCompany, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
+		if not self.editsAreNotEmpty:
+			showMessage('Error', 'Fields must not be empty')
+			return
 		correct = True
 		for edit in self.edits:
 			correct = correct and len(edit.text()) > 0
@@ -163,8 +184,16 @@ class ChangeRecordCompany(ChangeRecord):
 class ChangeRecordUsers(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecordUsers, self).__init__(parent, tableName, keys)
-		
+
+	def addRecord(self):
+		super(ChangeRecordUsers, self).addRecord()
+		self.tableView.addUserSignal.emit(self.values[0]['value'])
+	
 	def checkCorrectness(self):
+		if not self.editsAreNotEmpty:
+			showMessage('Error', 'Fields must not be empty')
+			return
+
 		correct = True
 		for edit in self.edits:
 			if edit.field == 'login':
@@ -186,15 +215,10 @@ class ChangeRecordEmployees(ChangeRecord):
 		self.addUserSignal.connect(self.addedUser)
 		
 	def checkCorrectness(self):
-		correct = True
-		for edit in self.edits:
-			if edit.field == 'name':
-				correct = correct and len(edit.text()) > 0
-			elif edit.field == 'login':
-				correct = correct and len(edit.text()) > 0
-		if not correct:
-			showMessage('Error', 'Name must not be empty, each employee must be a user')
-			return False
+		if not self.editsAreNotEmpty:
+			showMessage('Error', 'Fields must not be empty')
+			return
+
 		if self.rec:
 			self.editRecord()
 		else:
@@ -249,17 +273,45 @@ class ChangeRecordProjects(ChangeRecord):
 		super(ChangeRecordProjects, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
-		correct = True
-		for edit in self.edits:
-			if edit.field == 'name':
-				correct = correct and len(edit.text()) > 0
-		if not correct:
-			showMessage('Error', 'Project name must not be empty')
-			return False
+		if not self.editsAreNotEmpty:
+			showMessage('Error', 'Fields must not be empty')
+			return
 		if self.rec:
 			self.editRecord()
 		else:
 			self.addRecord()
+
+class ChangeRecordContracts(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordContracts, self).__init__(parent, tableName, keys)
+
+class ChangeRecordProjectEmployees(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordProjectEmployees, self).__init__(parent, tableName, keys)
+		
+	def checkCorrectness(self):
+		if not self.editsAreNotEmpty:
+			showMessage('Error', 'Fields must not be empty')
+			return
+		self.getValues()
+		print self.values
+		e = self.values[0]['value']
+		p = self.values[1]['value']
+		empl = dbi.query(Employee).filter(Employee.id == e).one()
+		comp = dbi.query(Contract.companyId).filter(Contract.projectId == p).all()
+		exists = False
+		for c in comp:
+			if c == empl.company.id:
+				exists = True
+				break
+		if not exists:
+			showMessage('Error', 'Invalid pair: employee and project')
+			return
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
 		
 class ViewTables(QtGui.QWidget):
 	def __init__(self, parent, tableName):
@@ -373,5 +425,29 @@ class ViewTableProjects(ViewTables):
 
 	def editRecord(self, row, column):
 		rec = ChangeRecordProjects(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+class ViewTableContracts(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableContracts, self).__init__(parent, 'projects')
+
+	def addRecord(self):
+		rec = ChangeRecordContracts(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecordContracts(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+class ViewTableProjectEmployees(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableProjectEmployees, self).__init__(parent, 'projectEmployees')
+
+	def addRecord(self):
+		rec = ChangeRecordProjectEmployees(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecordProjectEmployees(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
