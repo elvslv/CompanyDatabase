@@ -133,7 +133,6 @@ class ChangeRecord(QtGui.QDialog):
 		except:
 			pass
 		if self.edits[0].field == 'login':
-			print 'kjgfkjksdh'
 			self.tableView.addUserSignal.emit(values[0]['value'])
 		self.close()
 
@@ -243,8 +242,24 @@ class ChangeRecordEmployees(ChangeRecord):
 
 	@QtCore.pyqtSlot(str)
 	def addedUser(self, login):
-		print 'addedUser', login
 		self.edits[-1].setText(login)
+
+class ChangeRecordProjects(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordProjects, self).__init__(parent, tableName, keys)
+		
+	def checkCorrectness(self):
+		correct = True
+		for edit in self.edits:
+			if edit.field == 'name':
+				correct = correct and len(edit.text()) > 0
+		if not correct:
+			showMessage('Error', 'Project name must not be empty')
+			return False
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
 		
 class ViewTables(QtGui.QWidget):
 	def __init__(self, parent, tableName):
@@ -347,3 +362,16 @@ class ViewTableEmployees(ViewTables):
 	def editRecord(self, row, column):
 		rec = ChangeRecordEmployees(self, self.tableName, self.primaryKeys[row])
 		rec.open()
+
+class ViewTableProjects(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableProjects, self).__init__(parent, 'projects')
+
+	def addRecord(self):
+		rec = ChangeRecordProjects(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecordProjects(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+

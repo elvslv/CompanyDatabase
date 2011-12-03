@@ -121,6 +121,8 @@ class MainWindow(QtGui.QMainWindow):
 			table = ViewTableUsers(self)
 		elif tableName == 'employees':
 			table = ViewTableEmployees(self)
+		elif tableName == 'projects':
+			table = ViewTableProjects(self)
 		else:
 			table = ViewTables(self, tableName)
 		self.ui.mdiArea.addSubWindow(table)
