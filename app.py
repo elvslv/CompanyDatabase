@@ -12,7 +12,7 @@ from DB.Db import dbi
 from main import appInst
 from DB.dbExceptions import DBException
 from Utils import showMessage
-from Tables import ViewTables
+from Tables import *
 from misc import *
 
 class MainApplication(QtGui.QApplication):
@@ -47,17 +47,21 @@ class AddAdminDialog(QtGui.QDialog):
 		self.ui.buttonBox.button(QtGui.QDialogButtonBox.Ok).setDisabled(True)
 		self.ui.adminPasswordEdit.textChanged.connect(self.checkForEmpty)
 		self.ui.adminUsernameEdit.textChanged.connect(self.checkForEmpty)
-
+		self.ui.companyNameEdit.textChanged.connect(self.checkForEmpty)
+		self.ui.companyDetailsEdit.textChanged.connect(self.checkForEmpty)
+		
 		self.accepted.connect(self.addAdmin)
 
 	def checkForEmpty(self):
 		disable = len(self.ui.adminPasswordEdit.text()) < MIN_PASSWORD_LENGTH or\
-			len(self.ui.adminUsernameEdit.text()) < MIN_LOGIN_LENGTH
+			len(self.ui.adminUsernameEdit.text()) < MIN_LOGIN_LENGTH or\
+			len(self.ui.companyNameEdit.text()) < 1 or len(self.ui.companyDetailsEdit.text()) < 1 
 		self.ui.buttonBox.button(QtGui.QDialogButtonBox.Ok).setDisabled(disable)
 
 	def addAdmin(self):
 		appInst.addUser(self.ui.adminUsernameEdit.text(), self.ui.adminPasswordEdit.text(), 
 			True)
+		appInst.addCompany(self.ui.companyNameEdit.text(), self.ui.companyDetailsEdit.text())
 
 class LoginDialog(QtGui.QDialog):
 	loginSignal = QtCore.pyqtSignal(str, str)
@@ -111,7 +115,14 @@ class MainWindow(QtGui.QMainWindow):
 		self.ui.curStateLabel.setText(state)
 
 	def showTable(self, tableName):
-		table = ViewTables(self, tableName)
+		if tableName == 'companies':
+			table = ViewTableCompanies(self)
+		elif tableName == 'users':
+			table = ViewTableUsers(self)
+		elif tableName == 'employees':
+			table = ViewTableEmployees(self)
+		else:
+			table = ViewTables(self, tableName)
 		self.ui.mdiArea.addSubWindow(table)
 		table.show()
 	

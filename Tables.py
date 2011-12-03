@@ -7,6 +7,7 @@ from misc import *
 from PyQt4 import QtGui, QtCore
 
 class ChangeRecord(QtGui.QDialog):
+	addUserSignal = QtCore.pyqtSignal(str)
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecord, self).__init__(parent)
 
@@ -25,6 +26,11 @@ class ChangeRecord(QtGui.QDialog):
 		self.keys = keys
 		if keys:
 			self.rec = appInst.curUser.getRecord(tableName, keys)
+		self.createEdits()
+		self.buttonBox.accepted.connect(self.checkCorrectness)
+		self.buttonBox.rejected.connect(self.reject)
+
+	def createEdits(self):
 		row = 0
 		self.edits = []
 		for i, field in enumerate(self.fields):
@@ -39,9 +45,6 @@ class ChangeRecord(QtGui.QDialog):
 			
 		self.gbox.addWidget(self.buttonBox, row, 1, 1, 1)
 		self.setLayout(self.gbox)
-		
-		self.buttonBox.accepted.connect(self.checkCorrectness)
-		self.buttonBox.rejected.connect(self.reject)
 
 	def getEdit(self, field, val):
 		if field.foreign_keys:
@@ -125,7 +128,13 @@ class ChangeRecord(QtGui.QDialog):
 		for i, edit in enumerate(self.edits):
 			values.append({'name': edit.field, 'value': self.getValue(edit)})
 		appInst.curUser.insert(self.table, values)
-		self.tableView.fillCells()
+		try:
+			self.tableView.fillCells()
+		except:
+			pass
+		if self.edits[0].field == 'login':
+			print 'kjgfkjksdh'
+			self.tableView.addUserSignal.emit(values[0]['value'])
 		self.close()
 
 	def editRecord(self):
@@ -135,6 +144,107 @@ class ChangeRecord(QtGui.QDialog):
 		appInst.curUser.update(self.table, self.keys, values)
 		self.tableView.fillCells()
 		self.close()
+		
+class ChangeRecordCompany(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordCompany, self).__init__(parent, tableName, keys)
+		
+	def checkCorrectness(self):
+		correct = True
+		for edit in self.edits:
+			correct = correct and len(edit.text()) > 0
+		if not correct:
+			showMessage('Error', 'Company name and details must not be empty')
+			return False
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
+class ChangeRecordUsers(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordUsers, self).__init__(parent, tableName, keys)
+		
+	def checkCorrectness(self):
+		correct = True
+		for edit in self.edits:
+			if edit.field == 'login':
+				correct = correct and len(edit.text()) >= MIN_LOGIN_LENGTH
+			elif edit.field == 'password':
+				correct = correct and len(edit.text()) >= MIN_PASSWORD_LENGTH
+		if not correct:
+			showMessage('Error', 'Min login length is %d, min password length is%d'%(
+				MIN_LOGIN_LENGTH, MIN_PASSWORD_LENGTH))
+			return False
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
+class ChangeRecordEmployees(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordEmployees, self).__init__(parent, tableName, keys)
+		self.addUserSignal.connect(self.addedUser)
+		
+	def checkCorrectness(self):
+		correct = True
+		for edit in self.edits:
+			if edit.field == 'name':
+				correct = correct and len(edit.text()) > 0
+			elif edit.field == 'login':
+				correct = correct and len(edit.text()) > 0
+		if not correct:
+			showMessage('Error', 'Name must not be empty, each employee must be a user')
+			return False
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
+	def createEdits(self):
+		self.edits = []
+		label = QtGui.QLabel(self)
+		label.setText('name')
+		self.gbox.addWidget(label, 0, 0)
+		edit = self.createLineEdit(self.fields[0], self.rec[0] if self.rec else None)
+		edit.field = 'name'
+		self.edits.append(edit)
+		self.gbox.addWidget(edit, 0, 1)
+
+		label = QtGui.QLabel(self)
+		label.setText('company')
+		self.gbox.addWidget(label, 1, 0)
+		edit = self.createComboBox(self.fields[1], self.rec[1] if self.rec else None)
+		edit.field = self.fields[1].name
+		self.edits.append(edit)
+		self.gbox.addWidget(edit, 1, 1)
+
+		label = QtGui.QLabel(self)
+		label.setText('login')
+		self.gbox.addWidget(label, 2, 0)
+		edit = self.createLineEdit(None, self.rec[2] if self.rec else None)
+		edit.field = 'login'
+		edit.setDisabled(True)
+		self.edits.append(edit)
+		self.gbox.addWidget(edit, 2, 1)
+		if not self.rec:
+			addUserBtn = QtGui.QPushButton(self)
+			addUserBtn.setText('Add user')
+			self.gbox.addWidget(addUserBtn, 2, 2)
+			addUserBtn.clicked.connect(self.addUser)
+
+		self.gbox.addWidget(self.buttonBox, 4, 1)
+		self.setLayout(self.gbox)
+
+
+	def addUser(self):
+		newUser = ChangeRecordUsers(self, 'users')
+		newUser.open()
+
+	@QtCore.pyqtSlot(str)
+	def addedUser(self, login):
+		print 'addedUser', login
+		self.edits[-1].setText(login)
 		
 class ViewTables(QtGui.QWidget):
 	def __init__(self, parent, tableName):
@@ -200,4 +310,40 @@ class ViewTables(QtGui.QWidget):
 
 	def editRecord(self, row, column):
 		rec = ChangeRecord(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+class ViewTableCompanies(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableCompanies, self).__init__(parent, 'companies')
+
+	def addRecord(self):
+		rec = ChangeRecordCompany(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecordCompany(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+class ViewTableUsers(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableUsers, self).__init__(parent, 'users')
+
+	def addRecord(self):
+		rec = ChangeRecordUsers(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecordUsers(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+class ViewTableEmployees(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableEmployees, self).__init__(parent, 'employees')
+
+	def addRecord(self):
+		rec = ChangeRecordEmployees(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecordEmployees(self, self.tableName, self.primaryKeys[row])
 		rec.open()

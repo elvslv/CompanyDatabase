@@ -19,3 +19,15 @@ stage = ["Project isn't started", 'Project started', 'Project finished']
 activity = ["Conract isn't made", "Contract is made", "Contract is terminated", 
 	"Contract finished"]
 role = ["Developer", "Manager"]
+
+convertTableNameToColumnName = {
+	'companies': 'company', 
+	'users': 'user', 
+	'employees': 'employee', 
+	'projects': 'project', 
+	'contracts': 'contract',
+	'projectEmployees': 'employee on project',
+	'tasks': 'task',
+	'jobs': 'job',
+	'tasksDependencies': 'task dependency'
+}
