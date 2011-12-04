@@ -63,7 +63,7 @@ class Employee(Base):
 		unique = True)
 
 	company = relationship(Company, backref=backref('employees', cascade = "all,delete"))
-	user = relationship(User, backref=backref('employees', uselist = False, 
+	user = relationship(User, backref=backref('employee', uselist = False, 
 		cascade = "all,delete"))
 	
 	def __init__(self, name, companyId, login):
@@ -128,11 +128,14 @@ class Task(Base):
 	completionDate = Column(DateTime)
 
 	project = relationship(Project, backref=backref('tasks', cascade = "all,delete"))
+	employee = relationship(Employee, backref=backref('employees', cascade = "all,delete"))
 	
-	def __init__(self, name, projectId, plannedTime):
+	def __init__(self, name, projectId, employeeId, plannedTime, completionDate):
 		self.name = name
 		self.projectId = projectId
+		self.employeeId = employeeId
 		self.plannedTime = plannedTime
+		self.completionDate = completionDate
 
 class Job(Base):
 	__tablename__ = 'jobs'
@@ -148,7 +151,7 @@ class Job(Base):
 	employee = relationship(Employee, backref=backref('jobs', cascade = "all,delete"))
 	task = relationship(Task, backref=backref('jobs', cascade = "all,delete"))
 
-	def __init__(self, employeeId, projectId, startDate, completionDate, description):
+	def __init__(self, employeeId, taskId, startDate, completionDate, description):
 		self.employeeId = employeeId
 		self.projectId = projectId
 		self.startDate = startDate

@@ -28,6 +28,11 @@ class MainApplication(QtGui.QApplication):
 			"You're admin" if appInst.curUser.admin else ''))
 		return appInst.curUser
 
+	@QtCore.pyqtSlot()
+	def updateTableViews(self):
+		for w in app.mainWindow.ui.mdiArea.subWindowList():
+			w.widget().fillCells()
+
 app = MainApplication(sys.argv)
 
 class AboutDialog(QtGui.QDialog):
@@ -127,6 +132,8 @@ class MainWindow(QtGui.QMainWindow):
 			table = ViewTableContracts(self)
 		elif tableName == 'projectEmployees':
 			table = ViewTableProjectEmployees(self)
+		elif tableName == 'tasks':
+			table = ViewTableTasks(self)
 		else:
 			table = ViewTables(self, tableName)
 		self.ui.mdiArea.addSubWindow(table)

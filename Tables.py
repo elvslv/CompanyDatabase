@@ -164,7 +164,7 @@ class ChangeRecordCompany(ChangeRecord):
 		super(ChangeRecordCompany, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty:
+		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
 		correct = True
@@ -187,7 +187,7 @@ class ChangeRecordUsers(ChangeRecord):
 		self.tableView.addUserSignal.emit(self.values[0]['value'])
 	
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty:
+		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
 
@@ -212,7 +212,7 @@ class ChangeRecordEmployees(ChangeRecord):
 		self.addUserSignal.connect(self.addedUser)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty:
+		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
 
@@ -269,7 +269,7 @@ class ChangeRecordProjects(ChangeRecord):
 		super(ChangeRecordProjects, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty:
+		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
 		if self.rec:
@@ -286,7 +286,7 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 		super(ChangeRecordProjectEmployees, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty:
+		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
 		self.getValues()
@@ -297,12 +297,58 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 		comp = dbi.query(Contract.companyId).filter(Contract.projectId == p).all()
 		exists = False
 		for c in comp:
-			if c == empl.company.id:
+			if c[0] == empl.companyId:
 				exists = True
 				break
 		if not exists:
 			showMessage('Error', 'Invalid pair: employee and project')
 			return
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
+class ChangeRecordTasks(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordTasks, self).__init__(parent, tableName, keys)
+
+	def editsAreNotEmpty(self):
+		correct = True
+		for edit in self.edits:
+			if isinstance(edit, QtGui.QSpinBox):
+				correct = correct and edit.value()
+			if isinstance(edit, QtGui.QLineEdit):
+				correct = correct and len(edit.text())
+			if isinstance(edit, QtGui.QComboBox):
+				correct = correct and len(edit.currentText())
+		return correct
+
+	def createEdits(self):
+		super(ChangeRecordTasks, self).createEdits()
+		label = QtGui.QLabel(self)
+		label.setText('Finished')
+		self.gbox.addWidget(label, 4, 3)
+		self.checkBox = QtGui.QCheckBox(self)
+		self.gbox.addWidget(self.checkBox, 4, 4)
+
+	def getValues(self):
+		super(ChangeRecordTasks, self).getValues()
+		if not self.checkBox.isChecked():
+			for i, val in enumerate(self.values):
+				if val['name'] == 'completionDate':
+					print i
+					val['value'] = None
+	
+	def checkCorrectness(self):
+		if not self.editsAreNotEmpty():
+			showMessage('Error', 'Fields must not be empty')
+			return
+		if self.rec and self.checkBox.isChecked():
+			if len(dbi.query(TasksDependency, Task).filter(TasksDependency.slaveId == 
+				self.rec.id).filter(Task.id == TasksDependency.masterId).filter(Task.completionDate is 
+				None).all()):
+				showMessage('Error', 'There are unfinished task dependencies')
+				return
 		if self.rec:
 			self.editRecord()
 		else:
@@ -323,7 +369,7 @@ class ViewTables(QtGui.QWidget):
 		#app.mainWindow.loginDialog.loginSignal.connect(self.disableButtons)
 		self.tableName = tableName
 		self.setWindowTitle(tableName)
-
+		appInst.tables.append(self)
 		self.fillHeaders()
 		self.fillCells()
 		self.disableButtons()
@@ -394,6 +440,10 @@ class ViewTables(QtGui.QWidget):
 			row = self.ui.tableWidget.currentRow()
 			appInst.curUser.delete(self.tableName, self.primaryKeys[row])
 			appInst.updateTableViews()
+
+	def closeEvent(self, event):
+		appInst.tables.remove(self)
+		event.accept()
 
 class ViewTableCompanies(ViewTables):
 	def __init__(self, parent):
@@ -479,9 +529,19 @@ class ViewTableProjectEmployees(ViewTables):
 		rec = ChangeRecordProjectEmployees(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
-class ViewTableProjectTasks(ViewTables):
+	def disableButtons(self):
+		canAdd = appInst.curUser.admin or appInst.currUser.isManager()
+		canChange = appInst.curUser.admin
+		if len(self.ui.tableWidget.selectedItems()):
+			row = self.ui.tableWidget.currentRow()
+			projectEmpolyee = appInst.curUser.getRecord('projectEmployees', self.primaryKeys[row])
+			canChange = canChange or appInst.currUser.isManagerOnProject(projectEmpolyee.projectId)
+		self.ui.editRecordButton.setDisabled(canChange)
+		self.ui.deleteRecordButton.setDisabled(canChange)
+
+class ViewTableTasks(ViewTables):
 	def __init__(self, parent):
-		super(ViewTableProjectEmployees, self).__init__(parent, 'tasks')
+		super(ViewTableTasks, self).__init__(parent, 'tasks')
 
 	def addRecord(self):
 		rec = ChangeRecordTasks(self, self.tableName)
@@ -491,3 +551,13 @@ class ViewTableProjectTasks(ViewTables):
 		rec = ChangeRecordTasks(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
+	def disableButtons(self):
+		canAdd = appInst.curUser.admin or appInst.currUser.isManager()
+		canChange = appInst.curUser.admin
+		if len(self.ui.tableWidget.selectedItems()):
+			row = self.ui.tableWidget.currentRow()
+			task = appInst.curUser.getRecord('tasks', self.primaryKeys[row])
+			canChange = canChange or appInst.currUser.isManagerOnProject(task.projectId) or\
+				appInst.currUser.isTaskDeveloper(task.id)
+		self.ui.editRecordButton.setDisabled(canChange)
+		self.ui.deleteRecordButton.setDisabled(canChange)

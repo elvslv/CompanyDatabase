@@ -1,3 +1,4 @@
+from PyQt4 import QtGui, QtCore
 from DB.Db import *
 from sqlalchemy.orm.exc import NoResultFound
 from DB.dbExceptions import DBException
@@ -39,13 +40,36 @@ class AppUser:
 
 	def delete(self, table, keys):
 		return appInst.delete(table, keys)
+
+	def getEmployee():
+		return dbi.query(User).filter(login == User.login).filter(password == User.password).one()
+		
+	def isManager(self):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == empl.id).filter(ProjectEmployee.role == ROLE_MANAGER).all())
+
+	def isManagerOnProject(self, projectId):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == empl.id).filter(ProjectEmployee.employeeId == projectId).filter(ProjectEmployee.role == ROLE_MANAGER).all())
+
+	def isTaskDeveloper(self, taskId):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(Task).filter(Task.employeeId == empl.id).filter(Task.id == taskId).all())
+
+		
 	
 class App:
 	instance = None
 	curUser = None 
-
+	
 	def __init__(self):
-		pass
+		self.tables = list()
 
 	def getUser(self, login, password, msg = None):
 		try:
@@ -160,8 +184,8 @@ class App:
 		obj.delete()
 
 	def updateTableViews(self):
-		for w in app.mainWindow.ui.mdiArea.subWindowList():
-			w.widget().fillCells()
+		for table in self.tables:
+			table.fillCells()
 
 	def addUser(self, username, password, isAdmin):
 		dbi.addUnique(User(username, password, isAdmin), 'User with the same login already exists')
