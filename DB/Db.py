@@ -123,6 +123,7 @@ class Task(Base):
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
 	projectId = fkeyIndex('projects.id')
+	employeeId = fkeyIndex('employees.id')
 	plannedTime = Column(Integer, nullable = False)
 	completionDate = Column(DateTime)
 

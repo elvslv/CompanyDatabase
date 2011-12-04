@@ -36,6 +36,9 @@ class AppUser:
 		
 	def update(self, table, keys, values):
 		return appInst.update(table, keys, values)
+
+	def delete(self, table, keys):
+		return appInst.delete(table, keys)
 	
 class App:
 	instance = None
@@ -148,6 +151,17 @@ class App:
 		for key in keys:
 			obj = obj.filter(getattr(table, key['name']) == key['value'])
 		obj.update(values)
+
+	def delete(self, table, keys):
+		table = tableClasses[table.name]
+		obj = dbi.query(table)
+		for key in keys:
+			obj = obj.filter(getattr(table, key['name']) == key['value'])
+		obj.delete()
+
+	def updateTableViews(self):
+		for w in app.mainWindow.ui.mdiArea.subWindowList():
+			w.widget().fillCells()
 
 	def addUser(self, username, password, isAdmin):
 		dbi.addUnique(User(username, password, isAdmin), 'User with the same login already exists')

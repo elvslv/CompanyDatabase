@@ -103,7 +103,7 @@ class ChangeRecord(QtGui.QDialog):
 		return result
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty:
+		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
 		if self.rec:
@@ -135,10 +135,7 @@ class ChangeRecord(QtGui.QDialog):
 	def addRecord(self):
 		self.getValues()
 		appInst.curUser.insert(self.table, self.values)
-		try:
-			self.tableView.fillCells()
-		except:
-			pass
+		appInst.updateTableViews()
 		self.close()
 
 	def editRecord(self):
@@ -146,7 +143,7 @@ class ChangeRecord(QtGui.QDialog):
 		for i, edit in enumerate(self.edits):
 			values[edit.field] = self.getValue(edit)
 		appInst.curUser.update(self.table, self.keys, values)
-		self.tableView.fillCells()
+		appInst.updateTableViews()
 		self.close()
 
 	def editsAreNotEmpty(self):
@@ -259,7 +256,6 @@ class ChangeRecordEmployees(ChangeRecord):
 		self.gbox.addWidget(self.buttonBox, 4, 1)
 		self.setLayout(self.gbox)
 
-
 	def addUser(self):
 		newUser = ChangeRecordUsers(self, 'users')
 		newUser.open()
@@ -321,12 +317,16 @@ class ViewTables(QtGui.QWidget):
 		self.ui.setupUi(self)
 
 		self.ui.addRecordButton.clicked.connect(self.addRecord)
-		self.ui.tableWidget.cellDoubleClicked.connect(self.editRecord)
+		self.ui.editRecordButton.clicked.connect(self.editRecord)
+		self.ui.deleteRecordButton.clicked.connect(self.deleteRecord)
+		self.ui.tableWidget.itemSelectionChanged.connect(self.disableButtons)
+		#app.mainWindow.loginDialog.loginSignal.connect(self.disableButtons)
 		self.tableName = tableName
 		self.setWindowTitle(tableName)
 
 		self.fillHeaders()
 		self.fillCells()
+		self.disableButtons()
 
 	def fillHeaders(self):
 		self.headers = appInst.getHeadersWithForeignValues(self.tableName)
@@ -370,14 +370,30 @@ class ViewTables(QtGui.QWidget):
 			result.append(pk)
 			
 		return result
-		
+
+	def disableButtons(self):
+		disable = not (appInst.curUser.admin and len(self.ui.tableWidget.selectedItems()))
+		self.ui.addRecordButton.setDisabled(not appInst.curUser.admin)
+		self.ui.editRecordButton.setDisabled(disable)
+		self.ui.deleteRecordButton.setDisabled(disable)
+	
 	def addRecord(self):
 		rec = ChangeRecord(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecord(self, self.tableName, self.primaryKeys[row])
 		rec.open()
+
+	def deleteRecord(self):
+		msg = QtGui.QMessageBox.question(self, 'Message',
+			'Are you sure to delete this record ?',
+			QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+		if reply == QtGui.QMessageBox.Yes:
+			row = self.ui.tableWidget.currentRow()
+			appInst.curUser.delete(self.tableName, self.primaryKeys[row])
+			appInst.updateTableViews()
 
 class ViewTableCompanies(ViewTables):
 	def __init__(self, parent):
@@ -402,6 +418,18 @@ class ViewTableUsers(ViewTables):
 	def editRecord(self, row, column):
 		rec = ChangeRecordUsers(self, self.tableName, self.primaryKeys[row])
 		rec.open()
+
+	def disableButtons(self):
+		self.ui.addRecordButton.setDisabled(not appInst.curUser.admin)
+		disable = not (appInst.curUser.admin and len(self.ui.tableWidget.selectedItems()))
+		if len(self.ui.tableWidget.selectedItems()):
+			row = self.ui.tableWidget.currentRow()
+			user = appInst.curUser.getRecord('users', self.primaryKeys[row])
+			disable = user.login != appInst.curUser.login and not appInst.curUser.admin
+		
+		self.ui.editRecordButton.setDisabled(disable)
+		disable = disable or len(appInst.admins()) == 1
+		self.ui.deleteRecordButton.setDisabled(disable)
 
 class ViewTableEmployees(ViewTables):
 	def __init__(self, parent):
@@ -429,7 +457,7 @@ class ViewTableProjects(ViewTables):
 
 class ViewTableContracts(ViewTables):
 	def __init__(self, parent):
-		super(ViewTableContracts, self).__init__(parent, 'projects')
+		super(ViewTableContracts, self).__init__(parent, 'contracts')
 
 	def addRecord(self):
 		rec = ChangeRecordContracts(self, self.tableName)
@@ -449,5 +477,17 @@ class ViewTableProjectEmployees(ViewTables):
 
 	def editRecord(self, row, column):
 		rec = ChangeRecordProjectEmployees(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+class ViewTableProjectTasks(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableProjectEmployees, self).__init__(parent, 'tasks')
+
+	def addRecord(self):
+		rec = ChangeRecordTasks(self, self.tableName)
+		rec.open()
+
+	def editRecord(self, row, column):
+		rec = ChangeRecordTasks(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
