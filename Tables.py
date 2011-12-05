@@ -150,7 +150,7 @@ class ChangeRecord(QtGui.QDialog):
 		correct = True
 		for edit in self.edits:
 			if isinstance(edit, QtGui.QSpinBox):
-				correct = correct and len(edit.value())
+				correct = correct and edit.value()
 			if isinstance(edit, QtGui.QLineEdit):
 				correct = correct and len(edit.text())
 			if isinstance(edit, QtGui.QComboBox):
@@ -290,7 +290,6 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 			showMessage('Error', 'Fields must not be empty')
 			return
 		self.getValues()
-		print self.values
 		e = self.values[0]['value']
 		p = self.values[1]['value']
 		empl = dbi.query(Employee).filter(Employee.id == e).one()
@@ -312,17 +311,6 @@ class ChangeRecordTasks(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecordTasks, self).__init__(parent, tableName, keys)
 
-	def editsAreNotEmpty(self):
-		correct = True
-		for edit in self.edits:
-			if isinstance(edit, QtGui.QSpinBox):
-				correct = correct and edit.value()
-			if isinstance(edit, QtGui.QLineEdit):
-				correct = correct and len(edit.text())
-			if isinstance(edit, QtGui.QComboBox):
-				correct = correct and len(edit.currentText())
-		return correct
-
 	def createEdits(self):
 		super(ChangeRecordTasks, self).createEdits()
 		label = QtGui.QLabel(self)
@@ -336,7 +324,6 @@ class ChangeRecordTasks(ChangeRecord):
 		if not self.checkBox.isChecked():
 			for i, val in enumerate(self.values):
 				if val['name'] == 'completionDate':
-					print i
 					val['value'] = None
 	
 	def checkCorrectness(self):
@@ -354,7 +341,62 @@ class ChangeRecordTasks(ChangeRecord):
 		else:
 			self.addRecord()
 
-		
+class ChangeRecordJobs(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordJobs, self).__init__(parent, tableName, keys)
+
+	def createEdits(self):
+		super(ChangeRecordJobs, self).createEdits()
+		label = QtGui.QLabel(self)
+		label.setText('Finished')
+		self.gbox.addWidget(label, 4, 3)
+		self.checkBox = QtGui.QCheckBox(self)
+		self.gbox.addWidget(self.checkBox, 4, 4)
+
+	def getValues(self):
+		super(ChangeRecordJobs, self).getValues()
+		if not self.checkBox.isChecked():
+			for i, val in enumerate(self.values):
+				if val['name'] == 'completionDate':
+					val['value'] = None
+	
+	def checkCorrectness(self):
+		if not self.editsAreNotEmpty():
+			showMessage('Error', 'Fields must not be empty')
+			return
+		#something else?
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
+
+class ChangeRecordTaskDependencies(ChangeRecord):
+	def __init__(self, parent, tableName, keys = None):
+		super(ChangeRecordTaskDependencies, self).__init__(parent, tableName, keys)
+
+	def checkCorrectness(self):
+		if not self.editsAreNotEmpty():
+			showMessage('Error', 'Fields must not be empty')
+			return
+		self.getValues()
+		masterId = self.values[0]['value']
+		slaveId = self.values[1]['value']
+		project1 = appInst.getProjectByTask(masterId)
+		project2 = appInst.getProjectByTask(slaveId)
+		if project1.id != project2.id:
+			showMessage('Error', 'Chosen tasks must belong to the same project')
+			return
+		if masterId == slaveId:
+			showMessage('Error', 'Chosen tasks must be different')
+			return
+		graph = appInst.getTasksDependency()
+		print graph
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
 class ViewTables(QtGui.QWidget):
 	def __init__(self, parent, tableName):
 		super(ViewTables, self).__init__(parent)
@@ -383,9 +425,11 @@ class ViewTables(QtGui.QWidget):
 			self.ui.addRecordButton.setDisabled(True)
 
 	def fillCells(self):
+		print self.tableName
 		self.ui.tableWidget.clearContents()
 		fields = appInst.getVisibleHeaders(appInst.getTable(self.tableName))
 		values = appInst.selectAllWithForeignValues(self.tableName)
+		print values
 		self.ui.tableWidget.setRowCount(len(values))
 		row = -1
 		for value in values:
@@ -436,7 +480,7 @@ class ViewTables(QtGui.QWidget):
 		msg = QtGui.QMessageBox.question(self, 'Message',
 			'Are you sure to delete this record ?',
 			QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-		if reply == QtGui.QMessageBox.Yes:
+		if msg == QtGui.QMessageBox.Yes:
 			row = self.ui.tableWidget.currentRow()
 			appInst.curUser.delete(self.tableName, self.primaryKeys[row])
 			appInst.updateTableViews()
@@ -453,9 +497,15 @@ class ViewTableCompanies(ViewTables):
 		rec = ChangeRecordCompany(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordCompany(self, self.tableName, self.primaryKeys[row])
 		rec.open()
+
+	def disableButtons(self):
+		super(ViewTableCompanies, self).disableButtons()
+		row = self.ui.tableWidget.currentRow()
+		self.ui.deleteRecordButton.setDisabled(self.primaryKeys[row] == 1)
 
 class ViewTableUsers(ViewTables):
 	def __init__(self, parent):
@@ -465,7 +515,8 @@ class ViewTableUsers(ViewTables):
 		rec = ChangeRecordUsers(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordUsers(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
@@ -478,7 +529,7 @@ class ViewTableUsers(ViewTables):
 			disable = user.login != appInst.curUser.login and not appInst.curUser.admin
 		
 		self.ui.editRecordButton.setDisabled(disable)
-		disable = disable or len(appInst.admins()) == 1
+		disable = disable or len(appInst.getAdmins()) == 1
 		self.ui.deleteRecordButton.setDisabled(disable)
 
 class ViewTableEmployees(ViewTables):
@@ -489,7 +540,8 @@ class ViewTableEmployees(ViewTables):
 		rec = ChangeRecordEmployees(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordEmployees(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
@@ -501,7 +553,8 @@ class ViewTableProjects(ViewTables):
 		rec = ChangeRecordProjects(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordProjects(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
@@ -513,9 +566,16 @@ class ViewTableContracts(ViewTables):
 		rec = ChangeRecordContracts(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordContracts(self, self.tableName, self.primaryKeys[row])
 		rec.open()
+
+	def disableButtons(self):
+		super(ViewTableContracts, self).disableButtons()
+		row = self.ui.tableWidget.currentRow()
+		disable = not(appInst.hasProjects() and appInst.hasPartners())
+		self.ui.deleteRecordButton.setDisabled(disable)
 
 class ViewTableProjectEmployees(ViewTables):
 	def __init__(self, parent):
@@ -525,19 +585,21 @@ class ViewTableProjectEmployees(ViewTables):
 		rec = ChangeRecordProjectEmployees(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordProjectEmployees(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
 	def disableButtons(self):
 		canAdd = appInst.curUser.admin or appInst.currUser.isManager()
+		self.ui.addRecordButton.setDisabled(not canAdd)
 		canChange = appInst.curUser.admin
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			projectEmpolyee = appInst.curUser.getRecord('projectEmployees', self.primaryKeys[row])
 			canChange = canChange or appInst.currUser.isManagerOnProject(projectEmpolyee.projectId)
-		self.ui.editRecordButton.setDisabled(canChange)
-		self.ui.deleteRecordButton.setDisabled(canChange)
+		self.ui.editRecordButton.setDisabled(not canChange)
+		self.ui.deleteRecordButton.setDisabled(not canChange)
 
 class ViewTableTasks(ViewTables):
 	def __init__(self, parent):
@@ -547,17 +609,76 @@ class ViewTableTasks(ViewTables):
 		rec = ChangeRecordTasks(self, self.tableName)
 		rec.open()
 
-	def editRecord(self, row, column):
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordTasks(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
 	def disableButtons(self):
 		canAdd = appInst.curUser.admin or appInst.currUser.isManager()
+		self.ui.addRecordButton.setDisabled(not canAdd)
 		canChange = appInst.curUser.admin
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			task = appInst.curUser.getRecord('tasks', self.primaryKeys[row])
 			canChange = canChange or appInst.currUser.isManagerOnProject(task.projectId) or\
 				appInst.currUser.isTaskDeveloper(task.id)
-		self.ui.editRecordButton.setDisabled(canChange)
-		self.ui.deleteRecordButton.setDisabled(canChange)
+		self.ui.editRecordButton.setDisabled(not canChange)
+		self.ui.deleteRecordButton.setDisabled(not canChange)
+
+
+class ViewTableJobs(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableJobs, self).__init__(parent, 'jobs')
+
+	def addRecord(self):
+		rec = ChangeRecordJobs(self, self.tableName)
+		rec.open()
+
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
+		rec = ChangeRecordJobs(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+	def disableButtons(self):
+		canAdd = appInst.curUser.admin or appInst.currUser.isManager() or\
+			appInst.currUser.isDeveloper()
+		self.ui.addRecordButton.setDisabled(not canAdd)
+		canChange = appInst.curUser.admin
+		if len(self.ui.tableWidget.selectedItems()):
+			row = self.ui.tableWidget.currentRow()
+			job = appInst.curUser.getRecord('jobs', self.primaryKeys[row])
+			canChange = canChange or appInst.currUser.isManagerOnProject(job.task.projectId) or\
+				appInst.currUser.isTaskDeveloper(job.task.id)
+		self.ui.editRecordButton.setDisabled(not canChange)
+		self.ui.deleteRecordButton.setDisabled(not canChange)
+
+
+class ViewTableTaskDependencies(ViewTables):
+	def __init__(self, parent):
+		super(ViewTableTaskDependencies, self).__init__(parent, 'tasksDependencies')
+
+	def addRecord(self):
+		rec = ChangeRecordTaskDependencies(self, self.tableName)
+		rec.open()
+
+	def editRecord(self):
+		row = self.ui.tableWidget.currentRow()
+		rec = ChangeRecordTaskDependencies(self, self.tableName, self.primaryKeys[row])
+		rec.open()
+
+	def disableButtons(self):
+		canAdd = appInst.curUser.admin and appInst.getMaxTasksNumOnProjects()> 1 or\
+			appInst.currUser.isManager() and appInst.getMaxTasksNumOnProjectsWithManager() > 1
+		self.ui.addRecordButton.setDisabled(not canAdd)
+		canChange = appInst.curUser.admin
+		if len(self.ui.tableWidget.selectedItems()):
+			row = self.ui.tableWidget.currentRow()
+			taskDependency = appInst.curUser.getRecord('tasksDependencies', self.primaryKeys[row])
+			project1 = appInst.getProjectByTask(taskDependency.masterId)
+			project2 = appInst.getProjectByTask(taskDependency.slaveId)
+			canChange = canChange or (appInst.currUser.isManagerOnProject(project1.id) and\
+				project1.id == project2.id)
+		self.ui.editRecordButton.setDisabled(not canChange)
+		self.ui.deleteRecordButton.setDisabled(not canChange)
+

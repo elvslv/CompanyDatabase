@@ -153,7 +153,6 @@ class Job(Base):
 
 	def __init__(self, employeeId, taskId, startDate, completionDate, description):
 		self.employeeId = employeeId
-		self.projectId = projectId
 		self.startDate = startDate
 		self.completionDate = completionDate
 		self.description = description
@@ -194,6 +193,7 @@ class Database:
 		self.Session = sessionmaker(bind=self.engine, autocommit=True)
 		self.session = self.Session()
 		self.metadata = Base.metadata
+		self.connection = self.engine.connect()
 
 	def commit(self):
 		self.session.commit()
@@ -251,12 +251,3 @@ def getDbInstance():
 	return Database.instance
 
 dbi = getDbInstance()
-
-#def getAdminInstance():
-#	if Database.adminInstance is None:
-#		newUser = User('admin', 'admin', True)
-#		dbi.addUnique(newUser)
-#		Database.adminInstance = newUser
-#	return Database.adminInstance
-
-#admin = getAdminInstance()

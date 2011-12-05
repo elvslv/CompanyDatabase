@@ -3,7 +3,9 @@ from DB.Db import *
 from sqlalchemy.orm.exc import NoResultFound
 from DB.dbExceptions import DBException
 from sqlalchemy import *
+from sqlalchemy.sql import *
 from Utils import *
+import math
 
 class AppUser:
 	def __init__(self, login = None, password = None, admin = False):
@@ -50,6 +52,12 @@ class AppUser:
 			return False
 		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == empl.id).filter(ProjectEmployee.role == ROLE_MANAGER).all())
 
+	def isDeveloper(self):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == empl.id).filter(ProjectEmployee.role == ROLE_DEVELOPER).all())
+
 	def isManagerOnProject(self, projectId):
 		empl = self.getEmployee()
 		if not empl:
@@ -62,7 +70,6 @@ class AppUser:
 			return False
 		return len(dbi.query(Task).filter(Task.employeeId == empl.id).filter(Task.id == taskId).all())
 
-		
 	
 class App:
 	instance = None
@@ -124,6 +131,7 @@ class App:
 		return dbi.query(table).all()
 
 	def selectAllWithForeignValues(self, tableName):
+		print 1
 		table = self.getTable(tableName)
 		columns = []
 		filterStmts = dict()
@@ -138,6 +146,11 @@ class App:
 				columns.append(foreignColumn)
 			else:
 				columns.append(column)
+		if tableName == 'tasksDependencies':
+			q = dbi.session.execute('''select a.name, b.name from tasks as a, 
+				tasks as b, tasksDependencies as c
+				where a.id = c.masterId and b.id = c.slaveId''').fetchall()
+			return q
 		q = dbi.query(*columns)
 		for attr, value in filterStmts.items():
 			q = q.filter(attr == value)
@@ -145,6 +158,7 @@ class App:
 
 	def getRecord(self, tableName, keys):
 		table = self.getTable(tableName)
+		print table, tableName
 		query = dbi.query(*self.getVisibleHeaders(table))
 		for key in keys:
 			query = query.filter(table.c[key['name']] == key['value'])
@@ -167,7 +181,7 @@ class App:
 		obj = tableClasses[table.name]
 		vals = [value['value'] for value in values]
 		tmp = obj(*vals)
-		dbi.add(tmp)
+		dbi.addUnique(tmp)
 
 	def update(self, table, keys, values):
 		table = tableClasses[table.name]
@@ -177,7 +191,7 @@ class App:
 		obj.update(values)
 
 	def delete(self, table, keys):
-		table = tableClasses[table.name]
+		table = tableClasses[table]
 		obj = dbi.query(table)
 		for key in keys:
 			obj = obj.filter(getattr(table, key['name']) == key['value'])
@@ -185,17 +199,56 @@ class App:
 
 	def updateTableViews(self):
 		for table in self.tables:
+			print table
 			table.fillCells()
 
 	def addUser(self, username, password, isAdmin):
 		dbi.addUnique(User(username, password, isAdmin), 'User with the same login already exists')
 
 	def addCompany(self, name, details):
-		dbi.addUnique(Company(name, details), 'Company with the same name already exists') 
+		newCompany = Company(name, details)
+		if not len(self.admins):
+			self.company = newCompany
+		dbi.addUnique(newCompany, 'Company with the same name already exists') 
 
-	def admins(self):
-		result = dbi.query(User).filter(User.admin == True).all()
-		return result
+	def getAdmins(self):
+		self.admins = dbi.query(User).filter(User.admin == True).all()
+		return self.admins
+
+	def hasProjects(self):
+		return len(dbi.query(Project).all())
+
+	def hasPartners(self):
+		return len(dbi.query(Company).all()) > 1
+
+	def getTasksNumOnProject(self, projectId):
+		project = dbi.query(Project).filter(Project.id == projectId).one()
+		return len(project.tasks)
+
+	def getMaxTasksNumOnProjects(self):
+		tasksOnProject = dbi.query(func.count(Task.id)).group_by(Task.projectId).all()
+		maxi = 0
+		for tasks in tasksOnProject:
+			if tasks > maxi:
+				maxi = tasks
+		return maxi
+
+	def getMaxTasksNumOnProjectsWithManager(self):
+		projects = dbi.query(ProjectEmployee.projectId).filter(ProjectEmployee.employeeId == self.curUser.getEmployee().id).filter(ProjectEmployee.role == ROLE_MANAGER).all()
+		maxi = 0
+		for project in projects:
+			m = self.getTasksNumOnProject(project.id)
+			if m > maxi:
+				maxi = m
+
+		return maxi
+
+	def getProjectByTask(self, taskId):
+		return dbi.query(Task).filter(taskId == Task.id).one().project
+
+	def getTasksDependency(self):
+		return dbi.query(TasksDependency.slaveId, 
+			TasksDependency.masterId).group_by(TasksDependency.slaveId).all()
 
 def getAppInstance():
 	if App.instance is None:

@@ -113,7 +113,7 @@ class MainWindow(QtGui.QMainWindow):
 		
 		self.loginDialog.loginSignal.connect(app.login)
 
-		if not len(appInst.admins()):
+		if not len(appInst.getAdmins()):
 			self.addAdminDialog.open()
 
 	def changeState(self, state):
@@ -134,6 +134,10 @@ class MainWindow(QtGui.QMainWindow):
 			table = ViewTableProjectEmployees(self)
 		elif tableName == 'tasks':
 			table = ViewTableTasks(self)
+		elif tableName == 'jobs':
+			table = ViewTableJobs(self)
+		elif tableName == 'tasksDependencies':
+			table = ViewTableTaskDependencies(self)
 		else:
 			table = ViewTables(self, tableName)
 		self.ui.mdiArea.addSubWindow(table)
