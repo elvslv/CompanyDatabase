@@ -213,6 +213,7 @@ class Database:
 
 	def add(self, obj):
 		self.session.add(obj)
+		self.flush(obj)
 
 	def addAll(self, objs):
 		self.session.add_all(objs)
@@ -242,6 +243,7 @@ class Database:
 	def addUnique(self, obj, msg = None):
 		try:
 			self.add(obj)
+			self.flush(obj)
 		except IntegrityError:
 			raise DBException(msg if msg else "IntegrityError")
 

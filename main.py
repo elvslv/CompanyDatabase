@@ -131,7 +131,6 @@ class App:
 		return dbi.query(table).all()
 
 	def selectAllWithForeignValues(self, tableName):
-		print 1
 		table = self.getTable(tableName)
 		columns = []
 		filterStmts = dict()
@@ -158,7 +157,6 @@ class App:
 
 	def getRecord(self, tableName, keys):
 		table = self.getTable(tableName)
-		print table, tableName
 		query = dbi.query(*self.getVisibleHeaders(table))
 		for key in keys:
 			query = query.filter(table.c[key['name']] == key['value'])
@@ -199,7 +197,6 @@ class App:
 
 	def updateTableViews(self):
 		for table in self.tables:
-			print table
 			table.fillCells()
 
 	def addUser(self, username, password, isAdmin):
@@ -246,9 +243,16 @@ class App:
 	def getProjectByTask(self, taskId):
 		return dbi.query(Task).filter(taskId == Task.id).one().project
 
-	def getTasksDependency(self):
-		return dbi.query(TasksDependency.slaveId, 
+	def getTasksDependencyGraph(self):
+		query = dbi.query(TasksDependency.slaveId, 
 			TasksDependency.masterId).group_by(TasksDependency.slaveId).all()
+		maxId = dbi.query(func.max(TasksDependency.slaveId)).scalar()
+		maxTaskId = dbi.query(func.max(Task.id)).scalar()
+		print maxId
+		graph = [[] for i in range(maxId + 1)]
+		for q in query:
+			graph[q[0]].append(q[1])
+		return graph, maxTaskId
 
 def getAppInstance():
 	if App.instance is None:

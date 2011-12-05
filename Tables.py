@@ -380,8 +380,8 @@ class ChangeRecordTaskDependencies(ChangeRecord):
 			showMessage('Error', 'Fields must not be empty')
 			return
 		self.getValues()
-		masterId = self.values[0]['value']
-		slaveId = self.values[1]['value']
+		masterId = int(self.values[0]['value'])
+		slaveId = int(self.values[1]['value'])
 		project1 = appInst.getProjectByTask(masterId)
 		project2 = appInst.getProjectByTask(slaveId)
 		if project1.id != project2.id:
@@ -390,8 +390,24 @@ class ChangeRecordTaskDependencies(ChangeRecord):
 		if masterId == slaveId:
 			showMessage('Error', 'Chosen tasks must be different')
 			return
-		graph = appInst.getTasksDependency()
-		print graph
+		graph, maxTaskId = appInst.getTasksDependencyGraph()
+		graph[slaveId].append(masterId)
+		vis = [False for i in range(maxTaskId + 1)]
+		
+		def dfs(v):
+			if vis[v]:
+				return True
+			vis[v] = True
+			for i in graph[v]:
+				if dfs(i):
+					return True
+			vis[v] = False
+			return False
+			
+		if dfs(slaveId):
+			showMessage('Error', 'Cycle detected')
+			return
+			
 		if self.rec:
 			self.editRecord()
 		else:
@@ -425,11 +441,9 @@ class ViewTables(QtGui.QWidget):
 			self.ui.addRecordButton.setDisabled(True)
 
 	def fillCells(self):
-		print self.tableName
 		self.ui.tableWidget.clearContents()
 		fields = appInst.getVisibleHeaders(appInst.getTable(self.tableName))
 		values = appInst.selectAllWithForeignValues(self.tableName)
-		print values
 		self.ui.tableWidget.setRowCount(len(values))
 		row = -1
 		for value in values:
