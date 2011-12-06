@@ -20,13 +20,13 @@ class ChangeRecord(QtGui.QDialog):
 		self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel|QtGui.QDialogButtonBox.Ok)
 		self.buttonBox.setCenterButtons(True)
 		
-		self.table = appInst.curUser.getTable(tableName)
-		self.fields = appInst.curUser.getVisibleHeaders(self.table)
+		self.table = appInst.getTable(tableName)
+		self.fields = appInst.getVisibleHeaders(self.table)
 		
 		self.rec = None
 		self.keys = keys
 		if keys:
-			self.rec = appInst.curUser.getRecord(tableName, keys)
+			self.rec = appInst.getRecord(tableName, keys)
 		self.createEdits()
 		self.buttonBox.accepted.connect(self.checkCorrectness)
 		self.buttonBox.rejected.connect(self.reject)
@@ -86,7 +86,7 @@ class ChangeRecord(QtGui.QDialog):
 		if isEnum(field):
 			items = globals()[field.name]
 		else:
-			items = appInst.curUser.getForeignValues(self.table, field)
+			items = appInst.getForeignValues(self.table, field)
 		for i, item in enumerate(items):
 			if field.name in ('activity', 'stage', 'role'):
 				result.addItem(item, i)
@@ -134,7 +134,7 @@ class ChangeRecord(QtGui.QDialog):
 	
 	def addRecord(self):
 		self.getValues()
-		appInst.curUser.insert(self.table, self.values)
+		appInst.insert(self.table, self.values)
 		appInst.updateTableViews()
 		self.close()
 
@@ -142,7 +142,7 @@ class ChangeRecord(QtGui.QDialog):
 		values = dict()
 		for i, edit in enumerate(self.edits):
 			values[edit.field] = self.getValue(edit)
-		appInst.curUser.update(self.table, self.keys, values)
+		appInst.update(self.table, self.keys, values)
 		appInst.updateTableViews()
 		self.close()
 
@@ -428,6 +428,7 @@ class ViewTables(QtGui.QWidget):
 		self.tableName = tableName
 		self.setWindowTitle(tableName)
 		appInst.tables.append(self)
+		self.isReport = False
 		self.fillHeaders()
 		self.fillCells()
 		self.disableButtons()
@@ -437,13 +438,13 @@ class ViewTables(QtGui.QWidget):
 		self.ui.tableWidget.setColumnCount(len(self.headers))
 		self.ui.tableWidget.verticalHeader().setVisible(False)
 		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
-		if not (appInst.curUser and appInst.curUser.canUpdate(self.tableName)):
+		if not appInst.isAdmin():
 			self.ui.addRecordButton.setDisabled(True)
 
 	def fillCells(self):
 		self.ui.tableWidget.clearContents()
 		fields = appInst.getVisibleHeaders(appInst.getTable(self.tableName))
-		values = appInst.selectAllWithForeignValues(self.tableName)
+		values = appInst.selectAllWithForeignValues(self.tableName, self.isReport)
 		self.ui.tableWidget.setRowCount(len(values))
 		row = -1
 		for value in values:
@@ -476,8 +477,8 @@ class ViewTables(QtGui.QWidget):
 		return result
 
 	def disableButtons(self):
-		disable = not (appInst.curUser.admin and len(self.ui.tableWidget.selectedItems()))
-		self.ui.addRecordButton.setDisabled(not appInst.curUser.admin)
+		disable = not (appInst.isAdmin() and len(self.ui.tableWidget.selectedItems()))
+		self.ui.addRecordButton.setDisabled(not appInst.isAdmin())
 		self.ui.editRecordButton.setDisabled(disable)
 		self.ui.deleteRecordButton.setDisabled(disable)
 	
@@ -496,7 +497,7 @@ class ViewTables(QtGui.QWidget):
 			QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
 		if msg == QtGui.QMessageBox.Yes:
 			row = self.ui.tableWidget.currentRow()
-			appInst.curUser.delete(self.tableName, self.primaryKeys[row])
+			appInst.delete(self.tableName, self.primaryKeys[row])
 			appInst.updateTableViews()
 
 	def closeEvent(self, event):
@@ -535,12 +536,12 @@ class ViewTableUsers(ViewTables):
 		rec.open()
 
 	def disableButtons(self):
-		self.ui.addRecordButton.setDisabled(not appInst.curUser.admin)
-		disable = not (appInst.curUser.admin and len(self.ui.tableWidget.selectedItems()))
+		self.ui.addRecordButton.setDisabled(not appInst.isAdmin())
+		disable = not (appInst.isAdmin() and len(self.ui.tableWidget.selectedItems()))
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
-			user = appInst.curUser.getRecord('users', self.primaryKeys[row])
-			disable = user.login != appInst.curUser.login and not appInst.curUser.admin
+			user = appInst.getRecord('users', self.primaryKeys[row])
+			disable = user.login != appInst.getLogin() and not appInst.isAdmin()
 		
 		self.ui.editRecordButton.setDisabled(disable)
 		disable = disable or len(appInst.getAdmins()) == 1
@@ -605,13 +606,13 @@ class ViewTableProjectEmployees(ViewTables):
 		rec.open()
 
 	def disableButtons(self):
-		canAdd = appInst.curUser.admin or appInst.currUser.isManager()
+		canAdd = appInst.isAdmin() or appInst.isManager()
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.curUser.admin
+		canChange = appInst.isAdmin()
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
-			projectEmpolyee = appInst.curUser.getRecord('projectEmployees', self.primaryKeys[row])
-			canChange = canChange or appInst.currUser.isManagerOnProject(projectEmpolyee.projectId)
+			projectEmpolyee = appInst.getRecord('projectEmployees', self.primaryKeys[row])
+			canChange = canChange or appInst.isManagerOnProject(projectEmpolyee.projectId)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
 
@@ -629,21 +630,37 @@ class ViewTableTasks(ViewTables):
 		rec.open()
 
 	def disableButtons(self):
-		canAdd = appInst.curUser.admin or appInst.currUser.isManager()
+		canAdd = appInst.isAdmin() or appInst.isManager()
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.curUser.admin
+		canChange = appInst.isAdmin()
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
-			task = appInst.curUser.getRecord('tasks', self.primaryKeys[row])
-			canChange = canChange or appInst.currUser.isManagerOnProject(task.projectId) or\
-				appInst.currUser.isTaskDeveloper(task.id)
+			task = appInst.getRecord('tasks', self.primaryKeys[row])
+			canChange = canChange or appInst.isManagerOnProject(task.projectId) or\
+				appInst.isTaskDeveloper(task.id)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
 
 
 class ViewTableJobs(ViewTables):
-	def __init__(self, parent):
+	def __init__(self, parent, isReport):
 		super(ViewTableJobs, self).__init__(parent, 'jobs')
+		
+		self.isReport = isReport
+		if isReport:
+			self.ui.addRecordButton.setVisible(False)
+			self.ui.editRecordButton.setVisible(False)
+			self.ui.deleteRecordButton.setVisible(False)
+		
+			self.fillHeaders()
+			self.fillCells()
+
+	def fillHeaders(self):
+		super(ViewTableJobs, self).fillHeaders()
+		self.headers = ['employee', 'task', 'description', 'time spent']
+		self.ui.tableWidget.setColumnCount(len(self.headers))
+		self.ui.tableWidget.verticalHeader().setVisible(False)
+		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
 
 	def addRecord(self):
 		rec = ChangeRecordJobs(self, self.tableName)
@@ -655,15 +672,15 @@ class ViewTableJobs(ViewTables):
 		rec.open()
 
 	def disableButtons(self):
-		canAdd = appInst.curUser.admin or appInst.currUser.isManager() or\
-			appInst.currUser.isDeveloper()
+		canAdd = appInst.isAdmin() or appInst.isManager() or\
+			appInst.isDeveloper()
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.curUser.admin
+		canChange = appInst.isAdmin()
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
-			job = appInst.curUser.getRecord('jobs', self.primaryKeys[row])
-			canChange = canChange or appInst.currUser.isManagerOnProject(job.task.projectId) or\
-				appInst.currUser.isTaskDeveloper(job.task.id)
+			job = appInst.getRecord('jobs', self.primaryKeys[row])
+			canChange = canChange or appInst.isManagerOnProject(job.task.projectId) or\
+				appInst.isTaskDeveloper(job.task.id)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
 
@@ -682,17 +699,16 @@ class ViewTableTaskDependencies(ViewTables):
 		rec.open()
 
 	def disableButtons(self):
-		canAdd = appInst.curUser.admin and appInst.getMaxTasksNumOnProjects()> 1 or\
-			appInst.currUser.isManager() and appInst.getMaxTasksNumOnProjectsWithManager() > 1
+		canAdd = appInst.isAdmin() and appInst.getMaxTasksNumOnProjects()> 1 or\
+			appInst.isManager() and appInst.getMaxTasksNumOnProjectsWithManager() > 1
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.curUser.admin
+		canChange = appInst.isAdmin()
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
-			taskDependency = appInst.curUser.getRecord('tasksDependencies', self.primaryKeys[row])
+			taskDependency = appInst.getRecord('tasksDependencies', self.primaryKeys[row])
 			project1 = appInst.getProjectByTask(taskDependency.masterId)
 			project2 = appInst.getProjectByTask(taskDependency.slaveId)
-			canChange = canChange or (appInst.currUser.isManagerOnProject(project1.id) and\
+			canChange = canChange or (appInst.isManagerOnProject(project1.id) and\
 				project1.id == project2.id)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
-

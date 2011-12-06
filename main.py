@@ -43,34 +43,6 @@ class AppUser:
 	def delete(self, table, keys):
 		return appInst.delete(table, keys)
 
-	def getEmployee():
-		return dbi.query(User).filter(login == User.login).filter(password == User.password).one()
-		
-	def isManager(self):
-		empl = self.getEmployee()
-		if not empl:
-			return False
-		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == empl.id).filter(ProjectEmployee.role == ROLE_MANAGER).all())
-
-	def isDeveloper(self):
-		empl = self.getEmployee()
-		if not empl:
-			return False
-		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == empl.id).filter(ProjectEmployee.role == ROLE_DEVELOPER).all())
-
-	def isManagerOnProject(self, projectId):
-		empl = self.getEmployee()
-		if not empl:
-			return False
-		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == empl.id).filter(ProjectEmployee.employeeId == projectId).filter(ProjectEmployee.role == ROLE_MANAGER).all())
-
-	def isTaskDeveloper(self, taskId):
-		empl = self.getEmployee()
-		if not empl:
-			return False
-		return len(dbi.query(Task).filter(Task.employeeId == empl.id).filter(Task.id == taskId).all())
-
-	
 class App:
 	instance = None
 	curUser = None 
@@ -130,7 +102,7 @@ class App:
 		table = self.getTable(tableName)
 		return dbi.query(table).all()
 
-	def selectAllWithForeignValues(self, tableName):
+	def selectAllWithForeignValues(self, tableName, isReport = None):
 		table = self.getTable(tableName)
 		columns = []
 		filterStmts = dict()
@@ -149,6 +121,11 @@ class App:
 			q = dbi.session.execute('''select a.name, b.name from tasks as a, 
 				tasks as b, tasksDependencies as c
 				where a.id = c.masterId and b.id = c.slaveId''').fetchall()
+			return q
+		elif tableName == 'jobs' and isReport:
+			q = dbi.session.execute('''select c.name, b.name, a.description, 
+				a.completionDate - a.startDate from jobs as a, tasks as b, 
+				employees as c where a.employeeId = c.id and b.id =a.taskId''').fetchall()
 			return q
 		q = dbi.query(*columns)
 		for attr, value in filterStmts.items():
@@ -231,13 +208,15 @@ class App:
 		return maxi
 
 	def getMaxTasksNumOnProjectsWithManager(self):
-		projects = dbi.query(ProjectEmployee.projectId).filter(ProjectEmployee.employeeId == self.curUser.getEmployee().id).filter(ProjectEmployee.role == ROLE_MANAGER).all()
+		if not self.curUser:
+			return 0
+		projects = dbi.query(ProjectEmployee.projectId).filter(ProjectEmployee.employeeId == 
+			self.getEmployee().id).filter(ProjectEmployee.role == ROLE_MANAGER).all()
 		maxi = 0
 		for project in projects:
 			m = self.getTasksNumOnProject(project.id)
 			if m > maxi:
 				maxi = m
-
 		return maxi
 
 	def getProjectByTask(self, taskId):
@@ -253,6 +232,45 @@ class App:
 		for q in query:
 			graph[q[0]].append(q[1])
 		return graph, maxTaskId
+
+	def isAdmin(self):
+		return self.curUser and self.curUser.admin
+
+	def getLogin(self):
+		return self.curUser.login if self.curUser else None
+
+	def getEmployee():
+		return dbi.query(User).filter(self.curUser.login == 
+			User.login).filter(self.curUser.password == User.password).one() if self.curUser else None
+		
+	def isManager(self):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == 
+			empl.id).filter(ProjectEmployee.role == ROLE_MANAGER).all())
+
+	def isDeveloper(self):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == 
+			empl.id).filter(ProjectEmployee.role == ROLE_DEVELOPER).all())
+
+	def isManagerOnProject(self, projectId):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == 
+			empl.id).filter(ProjectEmployee.employeeId == projectId).filter(ProjectEmployee.role == 
+				ROLE_MANAGER).all())
+
+	def isTaskDeveloper(self, taskId):
+		empl = self.getEmployee()
+		if not empl:
+			return False
+		return len(dbi.query(Task).filter(Task.employeeId == 
+			empl.id).filter(Task.id == taskId).all())
 
 def getAppInstance():
 	if App.instance is None:

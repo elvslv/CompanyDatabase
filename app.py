@@ -25,7 +25,7 @@ class MainApplication(QtGui.QApplication):
 	def login(self, username, password):
 		appInst.setCurUser(username, password)
 		self.mainWindow.changeState('Hello, %s! %s' %(username, 
-			"You're admin" if appInst.curUser.admin else ''))
+			"You're admin" if appInst.isAdmin() else ''))
 		return appInst.curUser
 
 	@QtCore.pyqtSlot()
@@ -85,8 +85,8 @@ class LoginDialog(QtGui.QDialog):
 			self.ui.passwordEdit.text())
 
 class MainWindow(QtGui.QMainWindow):
-	def showTableTrigger(self, tableName):
-		return lambda: self.showTable(tableName)
+	def showTableTrigger(self, tableName, param = None):
+		return lambda: self.showTable(tableName) if not param else lambda: self.showTable(tableName, param)
 		
 	def __init__(self):
 		super(MainWindow, self).__init__()
@@ -110,6 +110,7 @@ class MainWindow(QtGui.QMainWindow):
 		self.ui.actionViewTasks.triggered.connect(self.showTableTrigger('tasks'))
 		self.ui.actionViewJobs.triggered.connect(self.showTableTrigger('jobs'))
 		self.ui.actionViewTasksDependencies.triggered.connect(self.showTableTrigger('tasksDependencies'))
+		self.ui.actionJobs.triggered.connect(self.showTableTrigger('jobs', True))
 		
 		self.loginDialog.loginSignal.connect(app.login)
 
@@ -119,7 +120,7 @@ class MainWindow(QtGui.QMainWindow):
 	def changeState(self, state):
 		self.ui.curStateLabel.setText(state)
 
-	def showTable(self, tableName):
+	def showTable(self, tableName, param = None):
 		if tableName == 'companies':
 			table = ViewTableCompanies(self)
 		elif tableName == 'users':
@@ -135,7 +136,7 @@ class MainWindow(QtGui.QMainWindow):
 		elif tableName == 'tasks':
 			table = ViewTableTasks(self)
 		elif tableName == 'jobs':
-			table = ViewTableJobs(self)
+			table = ViewTableJobs(self, param)
 		elif tableName == 'tasksDependencies':
 			table = ViewTableTaskDependencies(self)
 		else:

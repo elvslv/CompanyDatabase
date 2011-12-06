@@ -76,6 +76,7 @@
     <property name="title">
      <string>Reports</string>
     </property>
+    <addaction name="actionJobs"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -158,6 +159,11 @@
   <action name="actionViewTasksDependencies">
    <property name="text">
     <string>TasksDependencies</string>
+   </property>
+  </action>
+  <action name="actionJobs">
+   <property name="text">
+    <string>Jobs</string>
    </property>
   </action>
  </widget>
