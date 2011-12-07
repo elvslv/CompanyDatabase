@@ -120,7 +120,7 @@ class MainWindow(QtGui.QMainWindow):
 	def changeState(self, state):
 		self.ui.curStateLabel.setText(state)
 
-	def showTable(self, tableName, param = None):
+	def showTable(self, tableName, param):
 		if tableName == 'companies':
 			table = ViewTableCompanies(self)
 		elif tableName == 'users':

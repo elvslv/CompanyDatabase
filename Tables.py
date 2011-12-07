@@ -347,18 +347,18 @@ class ChangeRecordJobs(ChangeRecord):
 
 	def createEdits(self):
 		super(ChangeRecordJobs, self).createEdits()
-		label = QtGui.QLabel(self)
-		label.setText('Finished')
-		self.gbox.addWidget(label, 4, 3)
-		self.checkBox = QtGui.QCheckBox(self)
-		self.gbox.addWidget(self.checkBox, 4, 4)
+		#label = QtGui.QLabel(self)
+		#label.setText('Finished')
+		#self.gbox.addWidget(label, 4, 3)
+		#self.checkBox = QtGui.QCheckBox(self)
+		#self.gbox.addWidget(self.checkBox, 4, 4)
 
 	def getValues(self):
 		super(ChangeRecordJobs, self).getValues()
-		if not self.checkBox.isChecked():
-			for i, val in enumerate(self.values):
-				if val['name'] == 'completionDate':
-					val['value'] = None
+		#if not self.checkBox.isChecked():
+		#	for i, val in enumerate(self.values):
+		#		if val['name'] == 'completionDate':
+		#			val['value'] = None
 	
 	def checkCorrectness(self):
 		if not self.editsAreNotEmpty():
@@ -414,7 +414,7 @@ class ChangeRecordTaskDependencies(ChangeRecord):
 			self.addRecord()
 
 class ViewTables(QtGui.QWidget):
-	def __init__(self, parent, tableName):
+	def __init__(self, parent, tableName, isReport = None):
 		super(ViewTables, self).__init__(parent)
 
 		self.ui = Ui_ViewTables()
@@ -427,8 +427,8 @@ class ViewTables(QtGui.QWidget):
 		#app.mainWindow.loginDialog.loginSignal.connect(self.disableButtons)
 		self.tableName = tableName
 		self.setWindowTitle(tableName)
+		self.isReport = isReport
 		appInst.tables.append(self)
-		self.isReport = False
 		self.fillHeaders()
 		self.fillCells()
 		self.disableButtons()
@@ -445,7 +445,7 @@ class ViewTables(QtGui.QWidget):
 		self.ui.tableWidget.clearContents()
 		fields = appInst.getVisibleHeaders(appInst.getTable(self.tableName))
 		values = appInst.selectAllWithForeignValues(self.tableName, self.isReport)
-		self.ui.tableWidget.setRowCount(len(values))
+		self.ui.tableWidget.setRowCount(len(values) + 1 if self.isReport else None)
 		row = -1
 		for value in values:
 			row = row + 1
@@ -457,7 +457,12 @@ class ViewTables(QtGui.QWidget):
 					it = globals()[fields[column].name][int(item)]
 				newitem = QtGui.QTableWidgetItem(str(it))
 				self.ui.tableWidget.setItem(row, column, newitem)
-				
+		
+		if self.isReport:
+			newitem = QtGui.QTableWidgetItem(str(appInst.cntSum()))
+			self.ui.tableWidget.setItem(row + 1, column, newitem)
+			
+			
 		self.primaryKeys = self.findPrimaryKeys()
 		
 	def findPrimaryKeys(self):
@@ -644,9 +649,8 @@ class ViewTableTasks(ViewTables):
 
 class ViewTableJobs(ViewTables):
 	def __init__(self, parent, isReport):
-		super(ViewTableJobs, self).__init__(parent, 'jobs')
+		super(ViewTableJobs, self).__init__(parent, 'jobs', isReport)
 		
-		self.isReport = isReport
 		if isReport:
 			self.ui.addRecordButton.setVisible(False)
 			self.ui.editRecordButton.setVisible(False)
@@ -659,6 +663,9 @@ class ViewTableJobs(ViewTables):
 			self.ui.tableWidget.setColumnCount(len(self.headers))
 			self.ui.tableWidget.verticalHeader().setVisible(False)
 			self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
+
+	def fillCells(self):
+		super(ViewTableJobs, self).fillCells()
 
 	def addRecord(self):
 		rec = ChangeRecordJobs(self, self.tableName)

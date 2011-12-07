@@ -271,6 +271,9 @@ class App:
 		return len(dbi.query(Task).filter(Task.employeeId == 
 			empl.id).filter(Task.id == taskId).all())
 
+	def cntSum(self):
+		return dbi.session.execute('''select max(completionDate - startDate) from jobs''').fetchone()[0]
+
 def getAppInstance():
 	if App.instance is None:
 		App.instance = App()
