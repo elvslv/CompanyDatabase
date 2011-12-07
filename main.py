@@ -227,7 +227,6 @@ class App:
 			TasksDependency.masterId).group_by(TasksDependency.slaveId).all()
 		maxId = dbi.query(func.max(TasksDependency.slaveId)).scalar()
 		maxTaskId = dbi.query(func.max(Task.id)).scalar()
-		print maxId
 		graph = [[] for i in range(maxId + 1)]
 		for q in query:
 			graph[q[0]].append(q[1])
@@ -239,7 +238,7 @@ class App:
 	def getLogin(self):
 		return self.curUser.login if self.curUser else None
 
-	def getEmployee():
+	def getEmployee(self):
 		return dbi.query(User).filter(self.curUser.login == 
 			User.login).filter(self.curUser.password == User.password).one() if self.curUser else None
 		

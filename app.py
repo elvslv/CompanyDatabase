@@ -86,7 +86,7 @@ class LoginDialog(QtGui.QDialog):
 
 class MainWindow(QtGui.QMainWindow):
 	def showTableTrigger(self, tableName, param = None):
-		return lambda: self.showTable(tableName) if not param else lambda: self.showTable(tableName, param)
+		return lambda: self.showTable(tableName, param)
 		
 	def __init__(self):
 		super(MainWindow, self).__init__()

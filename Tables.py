@@ -651,16 +651,14 @@ class ViewTableJobs(ViewTables):
 			self.ui.addRecordButton.setVisible(False)
 			self.ui.editRecordButton.setVisible(False)
 			self.ui.deleteRecordButton.setVisible(False)
-		
-			self.fillHeaders()
-			self.fillCells()
 
 	def fillHeaders(self):
 		super(ViewTableJobs, self).fillHeaders()
-		self.headers = ['employee', 'task', 'description', 'time spent']
-		self.ui.tableWidget.setColumnCount(len(self.headers))
-		self.ui.tableWidget.verticalHeader().setVisible(False)
-		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
+		if self.isReport:
+			self.headers = ['employee', 'task', 'description', 'time spent']
+			self.ui.tableWidget.setColumnCount(len(self.headers))
+			self.ui.tableWidget.verticalHeader().setVisible(False)
+			self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
 
 	def addRecord(self):
 		rec = ChangeRecordJobs(self, self.tableName)
@@ -683,7 +681,6 @@ class ViewTableJobs(ViewTables):
 				appInst.isTaskDeveloper(job.task.id)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
-
 
 class ViewTableTaskDependencies(ViewTables):
 	def __init__(self, parent):

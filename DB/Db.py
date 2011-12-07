@@ -153,10 +153,10 @@ class Job(Base):
 
 	def __init__(self, employeeId, taskId, startDate, completionDate, description):
 		self.employeeId = employeeId
+		self.taskId = taskId
 		self.startDate = startDate
 		self.completionDate = completionDate
 		self.description = description
-
 
 class TasksDependency(Base):
 	__tablename__ = 'tasksDependencies'
