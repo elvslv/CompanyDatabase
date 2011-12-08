@@ -4,7 +4,7 @@ from main import appInst
 from sqlalchemy import *
 from Utils import *
 from misc import *
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtGui, QtCore, Qt
 from DB.Db import *
 
 class ChangeRecord(QtGui.QDialog):
@@ -38,7 +38,7 @@ class ChangeRecord(QtGui.QDialog):
 			label = QtGui.QLabel(self)
 			label.setText(appInst.getColumnName(field))
 			self.gbox.addWidget(label, row, 0, 1, 1)
-			edit = self.getEdit(field, self.rec[i] if self.rec else None)
+			edit = getEdit(self, field, self.rec[i] if self.rec else None)
 			edit.field = field.name
 			self.edits.append(edit)
 			self.gbox.addWidget(edit, row, 1, 1, 1)
@@ -46,61 +46,6 @@ class ChangeRecord(QtGui.QDialog):
 			
 		self.gbox.addWidget(self.buttonBox, row, 1, 1, 1)
 		self.setLayout(self.gbox)
-
-	def getEdit(self, field, val):
-		if field.foreign_keys:
-			return self.createComboBox(field, val)
-		if isinstance(field.type, Boolean):
-			return self.createCheckBox(field, val)
-		if isinstance(field.type, DateTime):
-			return self.createDateTimeEdit(field, val)
-		if isinstance(field.type, String) or isinstance(field.type, Text):
-			return self.createLineEdit(field, val)
-		if (field.name in ('activity', 'stage', 'role')):
-			return self.createComboBox(field, val)
-		if isinstance(field.type, Integer):
-			return self.createIntegerBox(field, val)
-
-		showMessage('Error', 'Unknown type') ##just for debugging
-
-	def createIntegerBox(self, field, val):
-		result = QtGui.QSpinBox(self)
-		result.setMinimum(0)
-		if val is not None:
-			result.setValue(val)
-		return result
-	
-	def createLineEdit(self, field, val):
-		result = QtGui.QLineEdit(self)
-		if val is not None:
-			result.setText(val)
-		return result
-
-	def createDateTimeEdit(self, field, val):
-		datetime = QtCore.QDateTime.currentDateTime() if val is None else QtCore.QDateTime.fromString(val, QtCore.Qt.ISODate)
-		result = QtGui.QDateTimeEdit(datetime, self)
-		return result
-
-	def createComboBox(self, field, val):
-		result = QtGui.QComboBox(self)
-		if isEnum(field):
-			items = globals()[field.name]
-		else:
-			items = appInst.getForeignValues(self.table, field)
-		for i, item in enumerate(items):
-			if field.name in ('activity', 'stage', 'role'):
-				result.addItem(item, i)
-			else:
-				result.addItem(item[1], item[0])
-			if not(val == None) and (item[0] == val):
-				result.setCurrentIndex(i)
-		return result
-
-	def createCheckBox(self, field, val):
-		result = QtGui.QCheckBox(self)
-		if val is not None:
-			result.setChecked(val == 1)
-		return result
 		
 	def checkCorrectness(self):
 		if not self.editsAreNotEmpty():
@@ -226,7 +171,7 @@ class ChangeRecordEmployees(ChangeRecord):
 		label = QtGui.QLabel(self)
 		label.setText('name')
 		self.gbox.addWidget(label, 0, 0)
-		edit = self.createLineEdit(self.fields[0], self.rec[0] if self.rec else None)
+		edit = createLineEdit(self, self.fields[0], self.rec[0] if self.rec else None)
 		edit.field = 'name'
 		self.edits.append(edit)
 		self.gbox.addWidget(edit, 0, 1)
@@ -234,7 +179,7 @@ class ChangeRecordEmployees(ChangeRecord):
 		label = QtGui.QLabel(self)
 		label.setText('company')
 		self.gbox.addWidget(label, 1, 0)
-		edit = self.createComboBox(self.fields[1], self.rec[1] if self.rec else None)
+		edit = createComboBox(self, self.fields[1], self.rec[1] if self.rec else None)
 		edit.field = self.fields[1].name
 		self.edits.append(edit)
 		self.gbox.addWidget(edit, 1, 1)
@@ -242,7 +187,7 @@ class ChangeRecordEmployees(ChangeRecord):
 		label = QtGui.QLabel(self)
 		label.setText('login')
 		self.gbox.addWidget(label, 2, 0)
-		edit = self.createLineEdit(None, self.rec[2] if self.rec else None)
+		edit = createLineEdit(self, None, self.rec[2] if self.rec else None)
 		edit.field = 'login'
 		edit.setDisabled(True)
 		self.edits.append(edit)
@@ -424,7 +369,6 @@ class ViewTables(QtGui.QWidget):
 		self.ui.editRecordButton.clicked.connect(self.editRecord)
 		self.ui.deleteRecordButton.clicked.connect(self.deleteRecord)
 		self.ui.tableWidget.itemSelectionChanged.connect(self.disableButtons)
-		#app.mainWindow.loginDialog.loginSignal.connect(self.disableButtons)
 		self.tableName = tableName
 		self.setWindowTitle(tableName)
 		self.isReport = isReport
@@ -649,13 +593,63 @@ class ViewTableTasks(ViewTables):
 
 class ViewTableJobs(ViewTables):
 	def __init__(self, parent, isReport):
+		self.projects = None
 		super(ViewTableJobs, self).__init__(parent, 'jobs', isReport)
 		
 		if isReport:
 			self.ui.addRecordButton.setVisible(False)
 			self.ui.editRecordButton.setVisible(False)
 			self.ui.deleteRecordButton.setVisible(False)
+			self.hLayout = QtGui.QHBoxLayout(self)
+			align = QtCore.Qt.Alignment(0x0040)
+			self.hLayout.setAlignment(align)
+			self.setLayout(self.hLayout)
+			self.createFilters()
+			self.filterBtn = QtGui.QPushButton()
+			self.filterBtn.setText('Filter')
+			self.filterBtn.clicked.connect(self.filter)
+			self.hLayout.addWidget(self.filterBtn)
 
+	def filter(self):
+		self.fillCells()
+
+	def createFilters(self):
+		self.projects = QtGui.QComboBox(self)
+		items = [(None, 'Choose project')]
+		items.extend(dbi.query(Project.id, Project.name).all())
+		for i, item in enumerate(items):
+			self.projects.addItem(item[1], item[0])
+		self.hLayout.addWidget(self.projects)
+		
+		self.employees = QtGui.QComboBox(self)
+		items = [(None, 'Choose employee')]
+		items.extend(dbi.query(Employee.id, Employee.name).all())
+		for i, item in enumerate(items):
+			self.employees.addItem(item[1], item[0])
+		self.hLayout.addWidget(self.employees)
+		
+		self.tasks = QtGui.QComboBox(self)
+		items = [(None, 'Choose task')]
+		items.extend(dbi.query(Task.id, Task.name).all())
+		for i, item in enumerate(items):
+			self.tasks.addItem(item[1], item[0])
+		self.hLayout.addWidget(self.tasks)
+
+	def getFilterParams(self):
+		if not self.projects:
+			return None
+		result = dict()
+		combos = [
+			{'edit': self.projects, 'name': 'projectId'},
+			{'edit': self.employees, 'name': 'employeeId'},
+			{'edit': self.tasks, 'name': 'taskId'}
+			]
+		for c in combos:
+			if not c['edit'].itemData(c['edit'].currentIndex()).isNull():
+				result[c['name']] = QtCore.QVariant.toString(c['edit'].itemData(c['edit'].currentIndex()))
+				
+		return result
+	
 	def fillHeaders(self):
 		super(ViewTableJobs, self).fillHeaders()
 		if self.isReport:
@@ -665,7 +659,26 @@ class ViewTableJobs(ViewTables):
 			self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
 
 	def fillCells(self):
-		super(ViewTableJobs, self).fillCells()
+		self.ui.tableWidget.clearContents()
+		filterParams = self.getFilterParams()
+		values = appInst.selectAllWithForeignValues(self.tableName, self.isReport, filterParams)
+		self.ui.tableWidget.setRowCount(len(values) + 1 if self.isReport else None)
+		row = -1
+		column = 0
+		for value in values:
+			row = row + 1
+			column = -1
+			for item in value:
+				column = column + 1
+				it = item
+				newitem = QtGui.QTableWidgetItem(str(it))
+				self.ui.tableWidget.setItem(row, column, newitem)
+		
+		if self.isReport:
+			sum = appInst.cntSum(filterParams)
+			if sum:
+				newitem = QtGui.QTableWidgetItem(str(sum))
+				self.ui.tableWidget.setItem(row + 1, column, newitem)
 
 	def addRecord(self):
 		rec = ChangeRecordJobs(self, self.tableName)

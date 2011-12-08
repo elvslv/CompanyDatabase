@@ -102,7 +102,7 @@ class App:
 		table = self.getTable(tableName)
 		return dbi.query(table).all()
 
-	def selectAllWithForeignValues(self, tableName, isReport = None):
+	def selectAllWithForeignValues(self, tableName, isReport = None, filterParams = None):
 		table = self.getTable(tableName)
 		columns = []
 		filterStmts = dict()
@@ -123,9 +123,18 @@ class App:
 				where a.id = c.masterId and b.id = c.slaveId''').fetchall()
 			return q
 		elif tableName == 'jobs' and isReport:
-			q = dbi.session.execute('''select c.name, b.name, a.description, 
-				a.completionDate - a.startDate from jobs as a, tasks as b, 
-				employees as c where a.employeeId = c.id and b.id =a.taskId''').fetchall()
+			qStr = '''select c.name, b.name, a.description, a.completionDate - a.startDate 
+				from jobs as a, tasks as b, employees as c where a.employeeId = c.id 
+				and b.id = a.taskId'''
+			if filterParams:
+				if 'employeeId' in filterParams:
+					qStr += ' and c.id = %s' % filterParams['employeeId']
+				if 'taskId' in filterParams:
+					qStr += ' and b.id = %s' % filterParams['taskId']
+				if 'projectId' in filterParams:
+					qStr += ' and b.projectId = %s' % filterParams['projectId']
+					
+			q = dbi.session.execute(qStr).fetchall()
 			return q
 		q = dbi.query(*columns)
 		for attr, value in filterStmts.items():
@@ -271,8 +280,17 @@ class App:
 		return len(dbi.query(Task).filter(Task.employeeId == 
 			empl.id).filter(Task.id == taskId).all())
 
-	def cntSum(self):
-		return dbi.session.execute('''select max(completionDate - startDate) from jobs''').fetchone()[0]
+	def cntSum(self, filterParams = None):
+		qStr = '''select max(a.completionDate - a.startDate) from jobs as a, 
+			tasks as b, employees as c where a.employeeId = c.id and b.id = a.taskId'''
+		if filterParams:
+			if 'employeeId' in filterParams:
+				qStr += ' and c.id = %s' % filterParams['employeeId']
+			if 'taskId' in filterParams:
+				qStr += ' and b.id = %s' % filterParams['taskId']
+			if 'projectId' in filterParams:
+				qStr += ' and b.projectId = %s' % filterParams['projectId']
+		return dbi.session.execute(qStr).fetchone()[0]
 
 def getAppInstance():
 	if App.instance is None:
