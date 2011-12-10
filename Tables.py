@@ -1,4 +1,5 @@
 import sqlalchemy
+import datetime
 from design_files.widget_table import Ui_ViewTables
 from main import appInst
 from sqlalchemy import *
@@ -6,6 +7,62 @@ from Utils import *
 from misc import *
 from PyQt4 import QtGui, QtCore, Qt
 from DB.Db import *
+
+def getEdit(parent, field, val):
+	if field.foreign_keys:
+		return createComboBox(parent, field, val)
+	if isinstance(field.type, Boolean):
+		return createCheckBox(parent, field, val)
+	if isinstance(field.type, DateTime):
+		return createDateTimeEdit(parent, field, val)
+	if isinstance(field.type, String) or isinstance(field.type, Text):
+		return createLineEdit(parent, field, val)
+	if (field.name in ('activity', 'stage', 'role')):
+		return createComboBox(parent, field, val)
+	if isinstance(field.type, Integer):
+		return createIntegerBox(parent, field, val)
+
+	showMessage('Error', 'Unknown type') ##just for debugging
+
+def createIntegerBox(parent, field, val):
+	result = QtGui.QSpinBox(parent)
+	result.setMinimum(0)
+	if val is not None:
+		result.setValue(val)
+	return result
+
+def createLineEdit(parent, field, val):
+	result = QtGui.QLineEdit(parent)
+	if val is not None:
+		result.setText(val)
+	return result
+
+def createDateTimeEdit(parent, field, val):
+	print datetime.datetime.__str__(val)
+	dt = QtCore.QDateTime.currentDateTime() if val is None else QtCore.QDateTime.fromString(datetime.datetime.__str__(val), QtCore.Qt.ISODate)
+	result = QtGui.QDateTimeEdit(dt, parent)
+	return result
+
+def createComboBox(parent, field, val):
+	result = QtGui.QComboBox(parent)
+	if isEnum(field):
+		items = globals()[field.name]
+	else:
+		items = appInst.getForeignValues(parent.table, field)
+	for i, item in enumerate(items):
+		if field.name in ('activity', 'stage', 'role'):
+			result.addItem(item, i)
+		else:
+			result.addItem(item[1], item[0])
+		if not(val == None) and (item[0] == val):
+			result.setCurrentIndex(i)
+	return result
+
+def createCheckBox(parent, field, val):
+	result = QtGui.QCheckBox(parent)
+	if val is not None:
+		result.setChecked(val == 1)
+	return result
 
 class ChangeRecord(QtGui.QDialog):
 	addUserSignal = QtCore.pyqtSignal(str)
@@ -35,6 +92,8 @@ class ChangeRecord(QtGui.QDialog):
 		row = 0
 		self.edits = []
 		for i, field in enumerate(self.fields):
+			if self.table.name == 'tasks' and field.name == 'state':
+				continue
 			label = QtGui.QLabel(self)
 			label.setText(appInst.getColumnName(field))
 			self.gbox.addWidget(label, row, 0, 1, 1)
@@ -43,8 +102,8 @@ class ChangeRecord(QtGui.QDialog):
 			self.edits.append(edit)
 			self.gbox.addWidget(edit, row, 1, 1, 1)
 			row += 1
-			
-		self.gbox.addWidget(self.buttonBox, row, 1, 1, 1)
+
+		self.gbox.addWidget(self.buttonBox, row + (1 if self.table.name == 'tasks' else 0), 1, 1, 1)
 		self.setLayout(self.gbox)
 		
 	def checkCorrectness(self):
@@ -260,17 +319,17 @@ class ChangeRecordTasks(ChangeRecord):
 		super(ChangeRecordTasks, self).createEdits()
 		label = QtGui.QLabel(self)
 		label.setText('Finished')
-		self.gbox.addWidget(label, 4, 3)
+		self.gbox.addWidget(label, 4, 0)
 		self.checkBox = QtGui.QCheckBox(self)
-		self.gbox.addWidget(self.checkBox, 4, 4)
+		self.gbox.addWidget(self.checkBox, 4, 1)
 
 	def getValues(self):
 		super(ChangeRecordTasks, self).getValues()
-		if not self.checkBox.isChecked():
-			for i, val in enumerate(self.values):
-				if val['name'] == 'completionDate':
-					val['value'] = None
-	
+		if self.checkBox.isChecked():
+			self.values.append({'name': 'state', 'value': STAGE_TASK_FINISHED})
+		elif self.rec and len(self.rec.jobs):
+			self.values.append({'name': 'state', 'value': STAGE_TASK_IN_PROGRESS})
+
 	def checkCorrectness(self):
 		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
@@ -289,21 +348,6 @@ class ChangeRecordTasks(ChangeRecord):
 class ChangeRecordJobs(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecordJobs, self).__init__(parent, tableName, keys)
-
-	def createEdits(self):
-		super(ChangeRecordJobs, self).createEdits()
-		#label = QtGui.QLabel(self)
-		#label.setText('Finished')
-		#self.gbox.addWidget(label, 4, 3)
-		#self.checkBox = QtGui.QCheckBox(self)
-		#self.gbox.addWidget(self.checkBox, 4, 4)
-
-	def getValues(self):
-		super(ChangeRecordJobs, self).getValues()
-		#if not self.checkBox.isChecked():
-		#	for i, val in enumerate(self.values):
-		#		if val['name'] == 'completionDate':
-		#			val['value'] = None
 	
 	def checkCorrectness(self):
 		if not self.editsAreNotEmpty():
@@ -389,7 +433,7 @@ class ViewTables(QtGui.QWidget):
 		self.ui.tableWidget.clearContents()
 		fields = appInst.getVisibleHeaders(appInst.getTable(self.tableName))
 		values = appInst.selectAllWithForeignValues(self.tableName, self.isReport)
-		self.ui.tableWidget.setRowCount(len(values) + 1 if self.isReport else None)
+		self.ui.tableWidget.setRowCount(len(values) + (1 if self.isReport else 0))
 		row = -1
 		for value in values:
 			row = row + 1
@@ -469,7 +513,8 @@ class ViewTableCompanies(ViewTables):
 	def disableButtons(self):
 		super(ViewTableCompanies, self).disableButtons()
 		row = self.ui.tableWidget.currentRow()
-		self.ui.deleteRecordButton.setDisabled(self.primaryKeys[row] == 1)
+		disable = not appInst.isAdmin() or (appInst.isAdmin() and self.primaryKeys[row][0]['value'] == 1)
+		self.ui.deleteRecordButton.setDisabled(disable)
 
 class ViewTableUsers(ViewTables):
 	def __init__(self, parent):
@@ -537,9 +582,9 @@ class ViewTableContracts(ViewTables):
 
 	def disableButtons(self):
 		super(ViewTableContracts, self).disableButtons()
-		row = self.ui.tableWidget.currentRow()
-		disable = not(appInst.hasProjects() and appInst.hasPartners())
-		self.ui.deleteRecordButton.setDisabled(disable)
+		#disable = not (appInst.isAdmin() and len(self.ui.tableWidget.selectedItems()))
+		#disable = disable or not(appInst.hasProjects() and appInst.hasPartners())
+		#self.ui.deleteRecordButton.setDisabled(disable)
 
 class ViewTableProjectEmployees(ViewTables):
 	def __init__(self, parent):
@@ -557,7 +602,7 @@ class ViewTableProjectEmployees(ViewTables):
 	def disableButtons(self):
 		canAdd = appInst.isAdmin() or appInst.isManager()
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.isAdmin()
+		canChange = appInst.isAdmin() and len(self.ui.tableWidget.selectedItems())
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			projectEmpolyee = appInst.getRecord('projectEmployees', self.primaryKeys[row])
@@ -581,7 +626,7 @@ class ViewTableTasks(ViewTables):
 	def disableButtons(self):
 		canAdd = appInst.isAdmin() or appInst.isManager()
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.isAdmin()
+		canChange = appInst.isAdmin() and len(self.ui.tableWidget.selectedItems())
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			task = appInst.getRecord('tasks', self.primaryKeys[row])
@@ -662,7 +707,7 @@ class ViewTableJobs(ViewTables):
 		self.ui.tableWidget.clearContents()
 		filterParams = self.getFilterParams()
 		values = appInst.selectAllWithForeignValues(self.tableName, self.isReport, filterParams)
-		self.ui.tableWidget.setRowCount(len(values) + 1 if self.isReport else None)
+		self.ui.tableWidget.setRowCount(len(values) + (1 if self.isReport else 0))
 		row = -1
 		column = 0
 		for value in values:
@@ -680,6 +725,8 @@ class ViewTableJobs(ViewTables):
 				newitem = QtGui.QTableWidgetItem(str(sum))
 				self.ui.tableWidget.setItem(row + 1, column, newitem)
 
+		self.primaryKeys = self.findPrimaryKeys()
+
 	def addRecord(self):
 		rec = ChangeRecordJobs(self, self.tableName)
 		rec.open()
@@ -693,12 +740,13 @@ class ViewTableJobs(ViewTables):
 		canAdd = appInst.isAdmin() or appInst.isManager() or\
 			appInst.isDeveloper()
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.isAdmin()
+		canChange = appInst.isAdmin() and len(self.ui.tableWidget.selectedItems())
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			job = appInst.getRecord('jobs', self.primaryKeys[row])
-			canChange = canChange or appInst.isManagerOnProject(job.task.projectId) or\
-				appInst.isTaskDeveloper(job.task.id)
+			task = dbi.query(Task).filter(Task.id == job.taskId).one()
+			canChange = canChange or appInst.isManagerOnProject(task.projectId) or\
+				appInst.isTaskDeveloper(task.id)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
 

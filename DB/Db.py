@@ -4,9 +4,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 
-from misc import MAX_LOGIN_LENGTH, STAGE_PROJECT_NOT_STARTED, STAGE_PROJECT_STARTED , \
-	STAGE_PROJECT_FINISHED, ACTIVITY_CONTRACT_NOT_MADE, ACTIVITY_CONTRACT_MADE, \
-	ACTIVITY_CONTRACT_TERMINATED, ACTIVITY_CONTRACT_FINISHED, ROLE_DEVELOPER, ROLE_MANAGER
+from misc import *
 
 from dbExceptions import DBException
 	
@@ -125,17 +123,18 @@ class Task(Base):
 	projectId = fkeyIndex('projects.id')
 	employeeId = fkeyIndex('employees.id')
 	plannedTime = Column(Integer, nullable = False)
-	completionDate = Column(DateTime)
-
+	state = Column(Integer, nullable = False)
+	
 	project = relationship(Project, backref=backref('tasks', cascade = "all,delete"))
 	employee = relationship(Employee, backref=backref('employees', cascade = "all,delete"))
 	
-	def __init__(self, name, projectId, employeeId, plannedTime, completionDate):
+	def __init__(self, name, projectId, employeeId, plannedTime, 
+		state = STAGE_TASK_NOT_STARTED):
 		self.name = name
 		self.projectId = projectId
 		self.employeeId = employeeId
 		self.plannedTime = plannedTime
-		self.completionDate = completionDate
+		self.state = state
 
 class Job(Base):
 	__tablename__ = 'jobs'
@@ -144,8 +143,8 @@ class Job(Base):
 		index = True)
 	taskId = Column(Integer, ForeignKey('tasks.id'), primary_key=True, 
 		index = True)
-	startDate = Column(DateTime)
-	completionDate = Column(DateTime)
+	startDate = Column(DateTime, nullable = False)
+	completionDate = Column(DateTime, nullable = False)
 	description = Column(Text)
 
 	employee = relationship(Employee, backref=backref('jobs', cascade = "all,delete"))

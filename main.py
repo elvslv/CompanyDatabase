@@ -165,21 +165,47 @@ class App:
 		obj = tableClasses[table.name]
 		vals = [value['value'] for value in values]
 		tmp = obj(*vals)
+		if table is Job:
+			taskId = obj.taskId
 		dbi.addUnique(tmp)
+		if table is Job:
+			task = dbi.query(Task).filter(Task.id == taskId).one()
+			if len(task.jobs) and task.state == STAGE_TASK_NOT_STARTED:
+				task.state = STAGE_TASK_IN_PROGRESS
+				dbi.flush(task)
 
 	def update(self, table, keys, values):
 		table = tableClasses[table.name]
 		obj = dbi.query(table)
 		for key in keys:
 			obj = obj.filter(getattr(table, key['name']) == key['value'])
+		print (table is Job)
+		if table is Job:
+			oldTaskId = obj.one().taskId
 		obj.update(values)
+		if table is Job:
+			task = dbi.query(Task).filter(Task.id == oldTaskId).one()
+			if not len(task.jobs):
+				task.state = STAGE_TASK_NOT_STARTED
+				dbi.flush(task)
+			newTask = obj.one().task
+			if len(newTask.jobs) and newTask.state == STAGE_TASK_NOT_STARTED:
+				newTask.state = STAGE_TASK_IN_PROGRESS
+				dbi.flush(newTask)
 
 	def delete(self, table, keys):
 		table = tableClasses[table]
 		obj = dbi.query(table)
 		for key in keys:
 			obj = obj.filter(getattr(table, key['name']) == key['value'])
+		print table
+		if table is Job:
+			task = obj.one().task
 		obj.delete()
+		if table is Job:
+			if not len(task.jobs):
+				task.state = STAGE_TASK_NOT_STARTED
+				dbi.flush(task)
 
 	def updateTableViews(self):
 		for table in self.tables:
@@ -291,6 +317,10 @@ class App:
 			if 'projectId' in filterParams:
 				qStr += ' and b.projectId = %s' % filterParams['projectId']
 		return dbi.session.execute(qStr).fetchone()[0]
+
+	def getNotEmptyProjects(self):
+		return dbi.session.execute('''select * from projects where id in 
+			(select projectId from tasks)''').fetchall()
 
 def getAppInstance():
 	if App.instance is None:

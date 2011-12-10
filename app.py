@@ -7,6 +7,7 @@ from design_files.window_main import Ui_MainWindow
 from design_files.dialog_about import Ui_AboutDialog
 from design_files.dialog_login import Ui_LoginDialog
 from design_files.add_admin_window import Ui_addAdminDialog
+from design_files.gantt_dialog import Ui_ganttDialog
 
 from DB.Db import dbi
 from main import appInst
@@ -14,6 +15,7 @@ from DB.dbExceptions import DBException
 from Utils import showMessage
 from Tables import *
 from misc import *
+from plot import GanttChart
 
 class MainApplication(QtGui.QApplication):
 	def exec_(self):
@@ -84,9 +86,33 @@ class LoginDialog(QtGui.QDialog):
 		self.loginSignal.emit(self.ui.usernameEdit.text(),
 			self.ui.passwordEdit.text())
 
+class GanttDialog(QtGui.QDialog):
+	def __init__(self, parent):
+		super(GanttDialog, self).__init__(parent)
+
+		self.ui = Ui_ganttDialog()
+		self.ui.setupUi(self)
+
+		projects = appInst.getNotEmptyProjects()
+		for project in projects:
+			self.ui.projectsComboBox.addItem(project.name, project.id)
+
+		self.ui.generateBtn.clicked.connect(self.generateDiagram)
+
+	def generateDiagram(self):
+		if not self.ui.projectsComboBox.currentText():
+			showMessage('Error', "There aren't projects in db")
+			return
+		projectId = self.ui.projectsComboBox.itemData(self.ui.projectsComboBox.currentIndex()).toInt()[0]
+		ganttDiagram = GanttChart(dbi.query(Task).filter(Task.projectId == projectId).all())
+		self.ui.webView.setHtml(ganttDiagram.generateDiagram())
+
 class MainWindow(QtGui.QMainWindow):
 	def showTableTrigger(self, tableName, param = None):
 		return lambda: self.showTable(tableName, param)
+
+	def showGanttDiagram(self):
+		self.ganttWidget.open()
 		
 	def __init__(self):
 		super(MainWindow, self).__init__()
@@ -97,7 +123,8 @@ class MainWindow(QtGui.QMainWindow):
 		self.aboutDialog = AboutDialog(self)
 		self.loginDialog = LoginDialog(self)
 		self.addAdminDialog = AddAdminDialog(self)
-
+		self.ganttWidget = GanttDialog(self)
+		
 		self.ui.actionAbout.triggered.connect(self.aboutDialog.open)
 		self.ui.actionLogin.triggered.connect(self.loginDialog.open)
 		
@@ -111,7 +138,7 @@ class MainWindow(QtGui.QMainWindow):
 		self.ui.actionViewJobs.triggered.connect(self.showTableTrigger('jobs'))
 		self.ui.actionViewTasksDependencies.triggered.connect(self.showTableTrigger('tasksDependencies'))
 		self.ui.actionJobs.triggered.connect(self.showTableTrigger('jobs', True))
-		
+		self.ui.actionGantt_diagram.triggered.connect(self.showGanttDiagram)
 		self.loginDialog.loginSignal.connect(app.login)
 
 		if not len(appInst.getAdmins()):

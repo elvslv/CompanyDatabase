@@ -77,6 +77,7 @@
      <string>Reports</string>
     </property>
     <addaction name="actionJobs"/>
+    <addaction name="actionGantt_diagram"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -164,6 +165,11 @@
   <action name="actionJobs">
    <property name="text">
     <string>Jobs</string>
+   </property>
+  </action>
+  <action name="actionGantt_diagram">
+   <property name="text">
+    <string>Gantt diagram</string>
    </property>
   </action>
  </widget>
