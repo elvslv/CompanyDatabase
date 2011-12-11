@@ -715,7 +715,7 @@ class ViewTableJobs(ViewTables):
 			column = -1
 			for item in value:
 				column = column + 1
-				it = item
+				it = datetime.timedelta(seconds = item) if column == 3 else item
 				newitem = QtGui.QTableWidgetItem(str(it))
 				self.ui.tableWidget.setItem(row, column, newitem)
 		

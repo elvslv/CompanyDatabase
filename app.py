@@ -23,12 +23,15 @@ class MainApplication(QtGui.QApplication):
 		self.mainWindow.showNormal()
 		super(MainApplication, self).exec_()
 
-	@QtCore.pyqtSlot(str, str)
 	def login(self, username, password):
 		appInst.setCurUser(username, password)
 		self.mainWindow.changeState('Hello, %s! %s' %(username, 
 			"You're admin" if appInst.isAdmin() else ''))
 		return appInst.curUser
+
+	def logout(self):
+		appInst.curUser = None
+		self.mainWindow.changeState('Please login')
 
 	@QtCore.pyqtSlot()
 	def updateTableViews(self):
@@ -127,6 +130,8 @@ class MainWindow(QtGui.QMainWindow):
 		
 		self.ui.actionAbout.triggered.connect(self.aboutDialog.open)
 		self.ui.actionLogin.triggered.connect(self.loginDialog.open)
+		self.ui.actionLogout.triggered.connect(self.logout)
+		self.ui.actionLogout.setDisabled(True)
 		
 		self.ui.actionViewCompanies.triggered.connect(self.showTableTrigger('companies'))
 		self.ui.actionViewUsers.triggered.connect(self.showTableTrigger('users'))
@@ -139,11 +144,22 @@ class MainWindow(QtGui.QMainWindow):
 		self.ui.actionViewTasksDependencies.triggered.connect(self.showTableTrigger('tasksDependencies'))
 		self.ui.actionJobs.triggered.connect(self.showTableTrigger('jobs', True))
 		self.ui.actionGantt_diagram.triggered.connect(self.showGanttDiagram)
-		self.loginDialog.loginSignal.connect(app.login)
+		self.loginDialog.loginSignal.connect(self.login)
 
 		if not len(appInst.getAdmins()):
 			self.addAdminDialog.open()
 
+	def logout(self):
+		self.ui.actionLogin.setDisabled(False)
+		self.ui.actionLogout.setDisabled(True)
+		app.logout()
+	
+	@QtCore.pyqtSlot(str, str)
+	def login(self, username, password):
+		self.ui.actionLogin.setDisabled(True)
+		self.ui.actionLogout.setDisabled(False)
+		app.login(username, password)
+		
 	def changeState(self, state):
 		self.ui.curStateLabel.setText(state)
 

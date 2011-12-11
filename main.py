@@ -6,6 +6,7 @@ from sqlalchemy import *
 from sqlalchemy.sql import *
 from Utils import *
 import math
+import datetime
 
 class AppUser:
 	def __init__(self, login = None, password = None, admin = False):
@@ -123,9 +124,9 @@ class App:
 				where a.id = c.masterId and b.id = c.slaveId''').fetchall()
 			return q
 		elif tableName == 'jobs' and isReport:
-			qStr = '''select c.name, b.name, a.description, a.completionDate - a.startDate 
-				from jobs as a, tasks as b, employees as c where a.employeeId = c.id 
-				and b.id = a.taskId'''
+			qStr = '''select c.name, b.name, a.description, unix_timestamp(a.completionDate) 
+				- unix_timestamp(a.startDate) from jobs as a, tasks as b, employees as c 
+				where a.employeeId = c.id and b.id = a.taskId'''
 			if filterParams:
 				if 'employeeId' in filterParams:
 					qStr += ' and c.id = %s' % filterParams['employeeId']
@@ -307,7 +308,7 @@ class App:
 			empl.id).filter(Task.id == taskId).all())
 
 	def cntSum(self, filterParams = None):
-		qStr = '''select max(a.completionDate - a.startDate) from jobs as a, 
+		qStr = '''select max(unix_timestamp(completionDate) - unix_timestamp(startDate)) from jobs as a, 
 			tasks as b, employees as c where a.employeeId = c.id and b.id = a.taskId'''
 		if filterParams:
 			if 'employeeId' in filterParams:
@@ -316,7 +317,7 @@ class App:
 				qStr += ' and b.id = %s' % filterParams['taskId']
 			if 'projectId' in filterParams:
 				qStr += ' and b.projectId = %s' % filterParams['projectId']
-		return dbi.session.execute(qStr).fetchone()[0]
+		return datetime.timedelta(seconds = dbi.session.execute(qStr).fetchone()[0])
 
 	def getNotEmptyProjects(self):
 		return dbi.session.execute('''select * from projects where id in 
