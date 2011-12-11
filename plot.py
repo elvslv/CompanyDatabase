@@ -5,7 +5,21 @@ from DB.Db import *
 colors = ['blue', 'red', 'green']
 
 def addPlannedTime(startDate, plannedTime):
-	return startDate + datetime.timedelta(hours = plannedTime)
+	newDate = startDate
+	pt = plannedTime
+	while pt:
+		if newDate.weekday() in (5, 6):
+			newDate += datetime.timedelta(days = 2)
+		if newDate.hour > 16:
+			newDate += datetime.timedelta(hours = min(24 - newDate.hour, pt))
+			pt -= min(24 - newDate.hour, pt)
+		elif pt > 8:
+			newDate += datetime.timedelta(hours = 24)
+			pt -= 8
+		else:
+			newDate += datetime.timedelta(hours = pt)
+			pt = 0
+	return newDate
 
 def createTask(task):
 	dependsOn = dbi.query(Task).filter(TasksDependency.slaveId == 
