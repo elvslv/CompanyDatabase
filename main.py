@@ -166,10 +166,11 @@ class App:
 		obj = tableClasses[table.name]
 		vals = [value['value'] for value in values]
 		tmp = obj(*vals)
-		if table is Job:
+		print str(table)
+		if str(table) == 'jobs':
 			taskId = obj.taskId
 		dbi.addUnique(tmp)
-		if table is Job:
+		if str(table) == 'jobs':
 			task = dbi.query(Task).filter(Task.id == taskId).one()
 			if len(task.jobs) and task.state == STAGE_TASK_NOT_STARTED:
 				task.state = STAGE_TASK_IN_PROGRESS

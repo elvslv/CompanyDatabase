@@ -38,7 +38,6 @@ def createLineEdit(parent, field, val):
 	return result
 
 def createDateTimeEdit(parent, field, val):
-	print datetime.datetime.__str__(val)
 	dt = QtCore.QDateTime.currentDateTime() if val is None else QtCore.QDateTime.fromString(datetime.datetime.__str__(val), QtCore.Qt.ISODate)
 	result = QtGui.QDateTimeEdit(dt, parent)
 	return result
@@ -715,7 +714,7 @@ class ViewTableJobs(ViewTables):
 			column = -1
 			for item in value:
 				column = column + 1
-				it = datetime.timedelta(seconds = item) if column == 3 else item
+				it = datetime.timedelta(seconds = item) if column == 3 and self.isReport else item
 				newitem = QtGui.QTableWidgetItem(str(it))
 				self.ui.tableWidget.setItem(row, column, newitem)
 		

@@ -7,10 +7,8 @@ STAGE_PROJECT_NOT_STARTED = 0
 STAGE_PROJECT_STARTED = 1
 STAGE_PROJECT_FINISHED = 2
 
-ACTIVITY_CONTRACT_NOT_MADE = 0
-ACTIVITY_CONTRACT_MADE = 1
-ACTIVITY_CONTRACT_TERMINATED = 2
-ACTIVITY_CONTRACT_FINISHED = 3
+ACTIVITY_CONTRACT_MADE = 0
+ACTIVITY_CONTRACT_TERMINATED = 1
 
 STAGE_TASK_NOT_STARTED = 0
 STAGE_TASK_IN_PROGRESS = 1
@@ -19,10 +17,9 @@ STAGE_TASK_FINISHED = 2
 ROLE_DEVELOPER = 0
 ROLE_MANAGER = 1
 
-stage = ["Project isn't started", 'Project started', 'Project finished']
-activity = ["Conract isn't made", "Contract is made", "Contract is terminated", 
-	"Contract finished"]
+activity = ["Contract is made", "Contract is terminated"]
 role = ["Developer", "Manager"]
+state = ["Task isn't started", "Task is in progerss", "Task is finished"]
 
 convertTableNameToColumnName = {
 	'companies': 'company', 

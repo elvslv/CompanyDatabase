@@ -6,4 +6,4 @@ def showMessage(title, message):
 	mbox.exec_()
 
 def isEnum(field):
-	return field.name in ('activity', 'stage', 'role')
+	return field.name in ('activity', 'role', 'state')

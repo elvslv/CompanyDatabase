@@ -75,12 +75,12 @@ class Project(Base):
 	id = pkeyIndex()
 	name = Column(Text, nullable = False)
 	startDate = Column(DateTime, nullable = False)
-	stage = Column(Integer, nullable = False, default = STAGE_PROJECT_NOT_STARTED)
-	
-	def __init__(self, name, startDate, stage = STAGE_PROJECT_NOT_STARTED):
+	finished = Column(Boolean, default = False)
+
+	def __init__(self, name, startDate, finished):
 		self.name = name
 		self.startDate = startDate
-		self.stage = stage
+		self.finished = finished
 
 class Contract(Base):
 	__tablename__ = 'contracts'
@@ -88,12 +88,12 @@ class Contract(Base):
 	id = pkeyIndex()
 	companyId = fkeyIndex('companies.id')
 	projectId = fkeyIndex('projects.id')
-	activity = Column(Integer, default = ACTIVITY_CONTRACT_NOT_MADE)
+	activity = Column(Integer, default = ACTIVITY_CONTRACT_MADE)
 
 	company = relationship(Company, backref=backref('contracts', cascade = "all,delete"))
 	project = relationship(Project, backref=backref('contracts', cascade = "all,delete"))
 	
-	def __init__(self, companyId, projectId, activity = ACTIVITY_CONTRACT_NOT_MADE):
+	def __init__(self, companyId, projectId, activity = ACTIVITY_CONTRACT_MADE):
 		self.companyId = companyId
 		self.projectId = projectId
 		self.activity = activity
@@ -123,7 +123,7 @@ class Task(Base):
 	projectId = fkeyIndex('projects.id')
 	employeeId = fkeyIndex('employees.id')
 	plannedTime = Column(Integer, nullable = False)
-	state = Column(Integer, nullable = False)
+	state = Column(Integer, default = STAGE_TASK_NOT_STARTED, nullable = False)
 	
 	project = relationship(Project, backref=backref('tasks', cascade = "all,delete"))
 	employee = relationship(Employee, backref=backref('employees', cascade = "all,delete"))
@@ -139,9 +139,10 @@ class Task(Base):
 class Job(Base):
 	__tablename__ = 'jobs'
 
-	employeeId = Column(Integer, ForeignKey('employees.id'), primary_key=True, 
+	id = pkeyIndex()
+	employeeId = Column(Integer, ForeignKey('employees.id'), 
 		index = True)
-	taskId = Column(Integer, ForeignKey('tasks.id'), primary_key=True, 
+	taskId = Column(Integer, ForeignKey('tasks.id'), 
 		index = True)
 	startDate = Column(DateTime, nullable = False)
 	completionDate = Column(DateTime, nullable = False)
