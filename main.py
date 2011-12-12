@@ -74,14 +74,14 @@ class App:
 		return result
 
 	def isVisible(self, column):
-		return not(column.primary_key and isinstance(column.type, Integer) and\
-			not column.foreign_keys)
+		return not(column.primary_key and\
+			isinstance(column.type, Integer) and not column.foreign_keys)
 
 	def getHeadersWithForeignValues(self, tableName):
 		table = self.getTable(tableName)
 		columns = []
 		for column in table.columns:
-			if self.isVisible(column):
+			if self.isVisible(column) and column.name != 'password':
 				columns.append(self.getColumnName(column))
 		return columns
 
@@ -108,7 +108,7 @@ class App:
 		columns = []
 		filterStmts = dict()
 		for column in table.columns:
-			if not(self.isVisible(column)):
+			if not(self.isVisible(column)) or column.name == 'password':
 				continue
 			if column.foreign_keys:
 				foreignColumn = list(column.foreign_keys)[0].column
@@ -166,7 +166,6 @@ class App:
 		obj = tableClasses[table.name]
 		vals = [value['value'] for value in values]
 		tmp = obj(*vals)
-		print str(table)
 		if str(table) == 'jobs':
 			taskId = obj.taskId
 		dbi.addUnique(tmp)
@@ -181,7 +180,6 @@ class App:
 		obj = dbi.query(table)
 		for key in keys:
 			obj = obj.filter(getattr(table, key['name']) == key['value'])
-		print (table is Job)
 		if table is Job:
 			oldTaskId = obj.one().taskId
 		obj.update(values)
@@ -200,7 +198,6 @@ class App:
 		obj = dbi.query(table)
 		for key in keys:
 			obj = obj.filter(getattr(table, key['name']) == key['value'])
-		print table
 		if table is Job:
 			task = obj.one().task
 		obj.delete()
