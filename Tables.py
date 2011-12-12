@@ -275,7 +275,14 @@ class ChangeRecordProjects(ChangeRecord):
 		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
+		self.getValues()
 		if self.rec:
+			startDate = self.values[1]['value']
+			if len(dbi.session.execute('''select 1 from jobs as a, tasks as b, projects as c where
+				a.taskId = b.id and c.name = "%s" and b.projectId = c.id and unix_timestamp(a.startDate) < %s''' % (self.rec[0], 
+					QtCore.QDateTime.fromString(startDate).toTime_t())).fetchall()):
+				showMessage('Error', 'Task jobs can not start earlier than project')
+				return
 			self.editRecord()
 		else:
 			self.addRecord()
@@ -352,7 +359,17 @@ class ChangeRecordJobs(ChangeRecord):
 		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
-		#something else?
+		self.getValues()
+		startDate = self.values[2]['value']
+		completionDate = self.values[3]['value']
+		if startDate >= completionDate:
+			showMessage('Error', 'Start date must be earlier than completion date')
+			return
+		projDate = dbi.session.execute('''select a.startDate from projects as a, tasks as b 
+			where a.id = b.projectId and b.id = %s''' % self.values[1]['value']).fetchone()
+		if startDate < projDate:
+			showMessage('Error', 'Task jobs can not start earlier than project')
+			return
 		if self.rec:
 			self.editRecord()
 		else:
