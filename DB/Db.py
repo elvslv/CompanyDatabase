@@ -85,9 +85,10 @@ class Project(Base):
 class Contract(Base):
 	__tablename__ = 'contracts'
 
-	id = pkeyIndex()
-	companyId = fkeyIndex('companies.id')
-	projectId = fkeyIndex('projects.id')
+	companyId = Column(Integer, ForeignKey('companies.id'), primary_key=True,
+		index = True)
+	projectId = Column(Integer, ForeignKey('projects.id'), primary_key=True,
+		index = True)
 	activity = Column(Integer, default = ACTIVITY_CONTRACT_MADE)
 
 	company = relationship(Company, backref=backref('contracts', cascade = "all,delete"))

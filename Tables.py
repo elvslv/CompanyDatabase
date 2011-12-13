@@ -49,13 +49,29 @@ def createComboBox(parent, field, val):
 	else:
 		items = appInst.getForeignValues(parent.table, field)
 	for i, item in enumerate(items):
+		if parent.table.name == 'contracts' and field.name == 'companyId' and i == 0:
+			continue
 		if field.name in ('activity', 'stage', 'role'):
 			result.addItem(item, i)
 		else:
 			result.addItem(item[1], item[0])
+		
 		if not(val == None) and (item[0] == val):
 			result.setCurrentIndex(i)
 	return result
+	
+def checkCorrectProjectAndContract(projectId, employeeId):
+	project = dbi.query(Project).filter(Project.id == projectId).one()
+	if project.finished:
+		raise DBException('Project is finished')
+		
+	empl = dbi.query(Employee).filter(Employee.id == employeeId).one()
+	contract = dbi.query(Contract).filter(Contract.projectId == projectId).filter(
+		Contract.companyId == empl.companyId).all()
+	if not len(contract) and empl.companyId != 1:
+		raise DBException('Invalid pair: employee and project')
+	if len(contract) and contract[0].activity != ACTIVITY_CONTRACT_MADE:
+		raise DBException('Contract is terminated')
 
 def createCheckBox(parent, field, val):
 	result = QtGui.QCheckBox(parent)
@@ -161,7 +177,7 @@ class ChangeRecord(QtGui.QDialog):
 			if isinstance(edit, QtGui.QDateTimeEdit):
 				correct = correct and len(edit.dateTime().toString(QtCore.Qt.ISODate))
 		return correct
-		
+
 class ChangeRecordCompany(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecordCompany, self).__init__(parent, tableName, keys)
@@ -291,6 +307,21 @@ class ChangeRecordContracts(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecordContracts, self).__init__(parent, tableName, keys)
 
+	def checkCorrectness(self):
+		if not self.editsAreNotEmpty():
+			showMessage('Error', 'Fields must not be empty')
+			return
+		self.getValues()
+		project = dbi.query(Project).filter(Project.id == self.values[1]['value']).one()
+		if project.finished:
+			showMessage('Error', 'Can not make contract on finished project')
+			return
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
+
 class ChangeRecordProjectEmployees(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		super(ChangeRecordProjectEmployees, self).__init__(parent, tableName, keys)
@@ -300,17 +331,10 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 			showMessage('Error', 'Fields must not be empty')
 			return
 		self.getValues()
-		e = self.values[0]['value']
-		p = self.values[1]['value']
-		empl = dbi.query(Employee).filter(Employee.id == e).one()
-		comp = dbi.query(Contract.companyId).filter(Contract.projectId == p).all()
-		exists = False
-		for c in comp:
-			if c[0] == empl.companyId:
-				exists = True
-				break
-		if not exists:
-			showMessage('Error', 'Invalid pair: employee and project')
+		try:
+			checkCorrectProjectAndContract(self.values[1]['value'], self.values[0]['value'])
+		except DBException, e:
+			showMessage('Error', e.value)
 			return
 		if self.rec:
 			self.editRecord()
@@ -340,6 +364,21 @@ class ChangeRecordTasks(ChangeRecord):
 		if not self.editsAreNotEmpty():
 			showMessage('Error', 'Fields must not be empty')
 			return
+		self.getValues()
+		
+		projectId = self.values[1]['value']
+		employeeId = self.values[2]['value']
+		try:
+			checkCorrectProjectAndContract(projectId, employeeId)
+		except DBException, e:
+			showMessage('Error', e.value)
+			return
+		if (self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
+			Task.state != STAGE_TASK_FINISHED).filter(Task.id != self.keys[0]['value']).all())) or\
+			(not self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
+			Task.state != STAGE_TASK_FINISHED).all())):
+			showMessage('Error', 'Employee has tasks in progress')
+			return
 		if self.rec and self.checkBox.isChecked():
 			if len(dbi.query(TasksDependency, Task).filter(TasksDependency.slaveId == 
 				self.rec.id).filter(Task.id == TasksDependency.masterId).filter(Task.completionDate is 
@@ -360,6 +399,15 @@ class ChangeRecordJobs(ChangeRecord):
 			showMessage('Error', 'Fields must not be empty')
 			return
 		self.getValues()
+		task = dbi.query(Task).filter(Task.id == self.values[1]['value']).one()
+		if task.state == STAGE_TASK_FINISHED:
+			showMessage('Error', 'Task is finished')
+			return
+		try:
+			checkCorrectProjectAndContract(task.projectId, self.values[0]['value'])
+		except DBException, e:
+			showMessage('Error', e.value)
+			return
 		startDate = self.values[2]['value']
 		completionDate = self.values[3]['value']
 		if startDate >= completionDate:
@@ -367,7 +415,7 @@ class ChangeRecordJobs(ChangeRecord):
 			return
 		projDate = dbi.session.execute('''select a.startDate from projects as a, tasks as b 
 			where a.id = b.projectId and b.id = %s''' % self.values[1]['value']).fetchone()
-		if startDate < projDate:
+		if datetime.datetime.strptime(str(startDate), "%Y-%m-%dT%H:%M:%S") < projDate[0]:
 			showMessage('Error', 'Task jobs can not start earlier than project')
 			return
 		if self.rec:
@@ -783,7 +831,7 @@ class ViewTableTaskDependencies(ViewTables):
 		canAdd = appInst.isAdmin() and appInst.getMaxTasksNumOnProjects()> 1 or\
 			appInst.isManager() and appInst.getMaxTasksNumOnProjectsWithManager() > 1
 		self.ui.addRecordButton.setDisabled(not canAdd)
-		canChange = appInst.isAdmin()
+		canChange = appInst.isAdmin() and len(self.ui.tableWidget.selectedItems())
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			taskDependency = appInst.getRecord('tasksDependencies', self.primaryKeys[row])
@@ -793,3 +841,4 @@ class ViewTableTaskDependencies(ViewTables):
 				project1.id == project2.id)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
+		

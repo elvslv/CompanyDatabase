@@ -106,8 +106,8 @@ class GanttDialog(QtGui.QDialog):
 		if not self.ui.projectsComboBox.currentText():
 			showMessage('Error', "There aren't projects in db")
 			return
-		projectId = self.ui.projectsComboBox.itemData(self.ui.projectsComboBox.currentIndex()).toInt()[0]
-		ganttDiagram = GanttChart(dbi.query(Task).filter(Task.projectId == projectId).all())
+		projectName = self.ui.projectsComboBox.itemData(self.ui.projectsComboBox.currentIndex()).toInt()[0]
+		ganttDiagram = GanttChart(dbi.query(Task).filter(Task.projectName == projectName).all())
 		self.ui.webView.setHtml(ganttDiagram.generateDiagram())
 
 class MainWindow(QtGui.QMainWindow):
