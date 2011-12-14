@@ -357,8 +357,11 @@ class ChangeRecordTasks(ChangeRecord):
 		super(ChangeRecordTasks, self).getValues()
 		if self.checkBox.isChecked():
 			self.values.append({'name': 'state', 'value': STAGE_TASK_FINISHED})
-		elif self.rec and len(self.rec.jobs):
-			self.values.append({'name': 'state', 'value': STAGE_TASK_IN_PROGRESS})
+		elif self.rec:
+			if len(dbi.session.execute('select 1 from jobs where taskId=%s' % self.keys[0]['value']).fetchall()):
+				self.values.append({'name': 'state', 'value': STAGE_TASK_IN_PROGRESS})
+			else:
+				self.values.append({'name': 'state', 'value': STAGE_TASK_NOT_STARTED})
 
 	def checkCorrectness(self):
 		if not self.editsAreNotEmpty():
@@ -379,16 +382,33 @@ class ChangeRecordTasks(ChangeRecord):
 			Task.state != STAGE_TASK_FINISHED).all())):
 			showMessage('Error', 'Employee has tasks in progress')
 			return
-		if self.rec and self.checkBox.isChecked():
-			if len(dbi.query(TasksDependency, Task).filter(TasksDependency.slaveId == 
-				self.rec.id).filter(Task.id == TasksDependency.masterId).filter(Task.completionDate is 
-				None).all()):
-				showMessage('Error', 'There are unfinished task dependencies')
-				return
+		if self.rec:
+			if self.checkBox.isChecked():
+				if len(dbi.query(TasksDependency, Task).filter(TasksDependency.slaveId == 
+					self.keys[0]['value']).filter(Task.id == TasksDependency.masterId).filter(
+						Task.state != STAGE_TASK_FINISHED).all()):
+					showMessage('Error', 'There are unfinished task dependencies')
+					return
+			else:
+				if len(dbi.session.execute('''select 1 from tasksDependencies as a, 
+					tasks as b where a.masterId=%s and b.id=a.slaveId and b.state=%s''' %(
+					self.keys[0]['value'], STAGE_TASK_FINISHED)).fetchall()):
+					showMessage('Error', 'There are finished dependent tasks')
+					return
 		if self.rec:
 			self.editRecord()
 		else:
 			self.addRecord()
+
+	def editRecord(self):
+		values = dict()
+		for i, edit in enumerate(self.edits):
+			values[edit.field] = self.getValue(edit)
+		if self.values[len(self.values) - 1]['name'] == 'state':
+			values['state'] = self.values[len(self.values) - 1]['value']
+		appInst.update(self.table, self.keys, values)
+		appInst.updateTableViews()
+		self.close()
 
 class ChangeRecordJobs(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
@@ -444,22 +464,23 @@ class ChangeRecordTaskDependencies(ChangeRecord):
 			showMessage('Error', 'Chosen tasks must be different')
 			return
 		graph, maxTaskId = appInst.getTasksDependencyGraph()
-		graph[slaveId].append(masterId)
-		vis = [False for i in range(maxTaskId + 1)]
-		
-		def dfs(v):
-			if vis[v]:
-				return True
-			vis[v] = True
-			for i in graph[v]:
-				if dfs(i):
-					return True
-			vis[v] = False
-			return False
+		if graph:
+			graph[slaveId].append(masterId)
+			vis = [False for i in range(maxTaskId + 1)]
 			
-		if dfs(slaveId):
-			showMessage('Error', 'Cycle detected')
-			return
+			def dfs(v):
+				if vis[v]:
+					return True
+				vis[v] = True
+				for i in graph[v]:
+					if dfs(i):
+						return True
+				vis[v] = False
+				return False
+				
+			if dfs(slaveId):
+				showMessage('Error', 'Cycle detected')
+				return
 			
 		if self.rec:
 			self.editRecord()

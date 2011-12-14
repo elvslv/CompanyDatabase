@@ -128,9 +128,13 @@ class GanttChart():
 		result += '<td>Date</td>'
 		result += '<td colspan = "%d">%s</td>' % (24 - firstDate.hour, firstDate.date())
 		newDate = firstDate + datetime.timedelta(hours = (24 - firstDate.hour))
-		for h in range(allHours/24):
+		h = 0
+		hours = allHours - (24 - firstDate.hour)
+		while hours > 0:
 			newDate +=  datetime.timedelta(hours = 24 * h)
 			result += '<td colspan = "24">%s</td>' % newDate.date()
+			h += 1
+			hours -= 24
 		result += '</tr>'
 		
 		result += '<tr>'

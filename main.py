@@ -182,6 +182,7 @@ class App:
 			obj = obj.filter(getattr(table, key['name']) == key['value'])
 		if table is Job:
 			oldTaskId = obj.one().taskId
+		print obj, values
 		obj.update(values)
 		if table is Job:
 			task = dbi.query(Task).filter(Task.id == oldTaskId).one()
@@ -260,6 +261,8 @@ class App:
 		query = dbi.query(TasksDependency.slaveId, 
 			TasksDependency.masterId).group_by(TasksDependency.slaveId).all()
 		maxId = dbi.query(func.max(TasksDependency.slaveId)).scalar()
+		if not maxId:
+			return None, None
 		maxTaskId = dbi.query(func.max(Task.id)).scalar()
 		graph = [[] for i in range(maxId + 1)]
 		for q in query:
