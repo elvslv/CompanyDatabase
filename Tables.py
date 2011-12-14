@@ -463,7 +463,7 @@ class ChangeRecordTaskDependencies(ChangeRecord):
 		if masterId == slaveId:
 			showMessage('Error', 'Chosen tasks must be different')
 			return
-		graph, maxTaskId = appInst.getTasksDependencyGraph()
+		graph, maxTaskId = appInst.getTasksDependencyGraph(slaveId)
 		if graph:
 			graph[slaveId].append(masterId)
 			vis = [False for i in range(maxTaskId + 1)]
