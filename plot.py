@@ -21,10 +21,16 @@ def addPlannedTime(startDate, plannedTime):
 			pt = 0
 	return newDate
 
-def createTask(task):
+def createTask(gantt, task):
 	dependsOn = dbi.query(Task).filter(TasksDependency.slaveId == 
 		task.id).filter(Task.id == TasksDependency.masterId).all()
-	return GanttTask(task.name, task.state, task, dependsOn, task.jobs, task.project)
+	dep = []
+	for t in dependsOn:
+		if not gantt.tasks[t.id]:
+			gantt.tasks[t.id] = createTask(gantt, t)
+		dep.append(gantt.tasks[t.id])
+			
+	return GanttTask(task.name, task.state, task, dep, task.jobs, task.project)
 
 def minDate():
 	return datetime.datetime(year = datetime.MINYEAR, month = 1, day = 1)
@@ -47,14 +53,21 @@ class GanttTask():
 
 	def getStartDate(self):
 		if not self.beginDate:
-			if self.state == STAGE_TASK_NOT_STARTED:
+			if len(self.dependsOn):
+				time = minDate()
+				for task in self.dependsOn:
+					if task.getEndDate() > time:
+						time = task.endDate
+				self.beginDate = time
+				print self.beginDate
+			elif self.state == STAGE_TASK_NOT_STARTED:
 				if not len(self.dependsOn):
 					self.beginDate = self.project.startDate
 				else:
 					time = minDate()
 					for t in self.dependsOn:
-						if t.endDate > time:
-							time = t.getEndDate()
+						if t.getEndDate() > time:
+							time = t.endDate
 					self.beginDate = time
 			else:
 				time = maxDate()
@@ -81,6 +94,8 @@ class GanttTask():
 				self.endDate = time
 			else:
 				self.endDate = datetime.datetime.today()
+		if self.endDate.hour == self.getStartDate().hour:
+			self.endDate += datetime.timedelta(hours = 1)
 		self.endDate = self.endDate.replace(minute = 0, second = 0, microsecond = 0)
 		return self.endDate
 
@@ -90,19 +105,24 @@ def getHours(d1, d2):
 	
 class GanttChart():
 	def __init__(self, tasks):
-		self.tasks = []
+		maxId = dbi.query(func.max(Task.id)).scalar()
+		self.tasks = [None for i in range(maxId + 1)]
 		for task in tasks:
-			self.tasks.append(createTask(task))
+			self.tasks[task.id] = createTask(self, task)
 
 	def getLastDate(self):
 		time = minDate()
 		for task in self.tasks:
+			if not task:
+				continue
 			time = max(task.beginDate, task.endDate, time)
 		return time
 
 	def getFirstDate(self):
 		time = maxDate()
 		for task in self.tasks:
+			if not task:
+				continue
 			time = min(time, task.beginDate)
 		return time
 
@@ -112,6 +132,8 @@ class GanttChart():
 		allHours = getHours(firstDate, lastDate)
 		result = '<html><body><table width = "100%" border = "1">'
 		for task in self.tasks:
+			if not task:
+				continue
 			result += '<tr>'
 			result += '<td>%s</td>' % task.name
 			h = getHours(firstDate, task.beginDate)
@@ -126,7 +148,7 @@ class GanttChart():
 			
 		result += '<tr>'
 		result += '<td>Date</td>'
-		result += '<td colspan = "%d">%s</td>' % (24 - firstDate.hour, firstDate.date())
+		result += '<td colspan = "%d" >%s</td>' % (24 - firstDate.hour, firstDate.date())
 		newDate = firstDate + datetime.timedelta(hours = (24 - firstDate.hour))
 		h = 0
 		hours = allHours - (24 - firstDate.hour)
