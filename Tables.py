@@ -110,7 +110,7 @@ class ChangeRecord(QtGui.QDialog):
 			if self.table.name == 'tasks' and field.name == 'state':
 				continue
 			label = QtGui.QLabel(self)
-			label.setText(appInst.getColumnName(field))
+			label.setText(self.headers[i])
 			self.gbox.addWidget(label, row, 0, 1, 1)
 			edit = getEdit(self, field, self.rec[i] if self.rec else None)
 			edit.field = field.name
@@ -180,6 +180,7 @@ class ChangeRecord(QtGui.QDialog):
 
 class ChangeRecordCompany(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['name', 'details']
 		super(ChangeRecordCompany, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
@@ -199,6 +200,7 @@ class ChangeRecordCompany(ChangeRecord):
 
 class ChangeRecordUsers(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['login', 'password', 'has admin permissions']
 		super(ChangeRecordUsers, self).__init__(parent, tableName, keys)
 
 	def addRecord(self):
@@ -227,6 +229,7 @@ class ChangeRecordUsers(ChangeRecord):
 
 class ChangeRecordEmployees(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['name', 'company', 'login']
 		super(ChangeRecordEmployees, self).__init__(parent, tableName, keys)
 		self.addUserSignal.connect(self.addedUser)
 		
@@ -285,6 +288,7 @@ class ChangeRecordEmployees(ChangeRecord):
 
 class ChangeRecordProjects(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['name', 'start date', 'is finished']
 		super(ChangeRecordProjects, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
@@ -305,6 +309,7 @@ class ChangeRecordProjects(ChangeRecord):
 
 class ChangeRecordContracts(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['company', 'project', 'contract state']
 		super(ChangeRecordContracts, self).__init__(parent, tableName, keys)
 
 	def checkCorrectness(self):
@@ -324,6 +329,7 @@ class ChangeRecordContracts(ChangeRecord):
 
 class ChangeRecordProjectEmployees(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['employee', 'project', 'role']
 		super(ChangeRecordProjectEmployees, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
@@ -343,6 +349,7 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 
 class ChangeRecordTasks(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['name', 'project', 'employee', 'planned time']
 		super(ChangeRecordTasks, self).__init__(parent, tableName, keys)
 
 	def createEdits(self):
@@ -412,6 +419,7 @@ class ChangeRecordTasks(ChangeRecord):
 
 class ChangeRecordJobs(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['employee', 'task', 'start date', 'completion date', 'description']
 		super(ChangeRecordJobs, self).__init__(parent, tableName, keys)
 	
 	def checkCorrectness(self):
@@ -446,6 +454,7 @@ class ChangeRecordJobs(ChangeRecord):
 
 class ChangeRecordTaskDependencies(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
+		self.headers = ['master', 'slave']
 		super(ChangeRecordTaskDependencies, self).__init__(parent, tableName, keys)
 
 	def checkCorrectness(self):
@@ -499,7 +508,7 @@ class ViewTables(QtGui.QWidget):
 		self.ui.deleteRecordButton.clicked.connect(self.deleteRecord)
 		self.ui.tableWidget.itemSelectionChanged.connect(self.disableButtons)
 		self.tableName = tableName
-		self.setWindowTitle(tableName)
+		self.setWindowTitle(convertTableNameToTitle[tableName])
 		self.isReport = isReport
 		appInst.tables.append(self)
 		self.fillHeaders()
@@ -507,7 +516,7 @@ class ViewTables(QtGui.QWidget):
 		self.disableButtons()
 
 	def fillHeaders(self):
-		self.headers = appInst.getHeadersWithForeignValues(self.tableName)
+		#self.headers = appInst.getHeadersWithForeignValues(self.tableName)
 		self.ui.tableWidget.setColumnCount(len(self.headers))
 		self.ui.tableWidget.verticalHeader().setVisible(False)
 		self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
@@ -584,6 +593,7 @@ class ViewTables(QtGui.QWidget):
 
 class ViewTableCompanies(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['name', 'details']
 		super(ViewTableCompanies, self).__init__(parent, 'companies')
 
 	def addRecord(self):
@@ -603,6 +613,7 @@ class ViewTableCompanies(ViewTables):
 
 class ViewTableUsers(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['login', 'admin']
 		super(ViewTableUsers, self).__init__(parent, 'users')
 
 	def addRecord(self):
@@ -628,6 +639,7 @@ class ViewTableUsers(ViewTables):
 
 class ViewTableEmployees(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['name', 'company', 'login']
 		super(ViewTableEmployees, self).__init__(parent, 'employees')
 
 	def addRecord(self):
@@ -641,6 +653,7 @@ class ViewTableEmployees(ViewTables):
 
 class ViewTableProjects(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['name', 'start date', 'is finished']
 		super(ViewTableProjects, self).__init__(parent, 'projects')
 
 	def addRecord(self):
@@ -654,6 +667,7 @@ class ViewTableProjects(ViewTables):
 
 class ViewTableContracts(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['company', 'project', 'contract state']
 		super(ViewTableContracts, self).__init__(parent, 'contracts')
 
 	def addRecord(self):
@@ -673,6 +687,7 @@ class ViewTableContracts(ViewTables):
 
 class ViewTableProjectEmployees(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['employee', 'project', 'role']
 		super(ViewTableProjectEmployees, self).__init__(parent, 'projectEmployees')
 
 	def addRecord(self):
@@ -697,6 +712,7 @@ class ViewTableProjectEmployees(ViewTables):
 
 class ViewTableTasks(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['name', 'project', 'employee', 'planned time', 'state']
 		super(ViewTableTasks, self).__init__(parent, 'tasks')
 
 	def addRecord(self):
@@ -724,6 +740,7 @@ class ViewTableTasks(ViewTables):
 class ViewTableJobs(ViewTables):
 	def __init__(self, parent, isReport):
 		self.projects = None
+		self.headers = ['employee', 'task', 'description', 'time spent'] if isReport else ['employee', 'task', 'start date', 'completion date', 'description'] 
 		super(ViewTableJobs, self).__init__(parent, 'jobs', isReport)
 		
 		if isReport:
@@ -783,7 +800,6 @@ class ViewTableJobs(ViewTables):
 	def fillHeaders(self):
 		super(ViewTableJobs, self).fillHeaders()
 		if self.isReport:
-			self.headers = ['employee', 'task', 'description', 'time spent']
 			self.ui.tableWidget.setColumnCount(len(self.headers))
 			self.ui.tableWidget.verticalHeader().setVisible(False)
 			self.ui.tableWidget.setHorizontalHeaderLabels(self.headers)
@@ -837,6 +853,7 @@ class ViewTableJobs(ViewTables):
 
 class ViewTableTaskDependencies(ViewTables):
 	def __init__(self, parent):
+		self.headers = ['master', 'slave']
 		super(ViewTableTaskDependencies, self).__init__(parent, 'tasksDependencies')
 
 	def addRecord(self):

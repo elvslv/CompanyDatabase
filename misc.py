@@ -32,3 +32,15 @@ convertTableNameToColumnName = {
 	'jobs': 'job',
 	'tasksDependencies': 'task dependency'
 }
+
+convertTableNameToTitle = {
+	'companies': 'companies', 
+	'users': 'users', 
+	'employees': 'employees', 
+	'projects': 'projects', 
+	'contracts': 'contracts',
+	'projectEmployees': 'employees on project',
+	'tasks': 'tassk',
+	'jobs': 'jobs',
+	'tasksDependencies': 'tasks dependency'
+}
