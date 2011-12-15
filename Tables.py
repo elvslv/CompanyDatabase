@@ -342,6 +342,9 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 		except DBException, e:
 			showMessage('Error', e.value)
 			return
+		if not (appInst.isAdmin() or appInst.isManagerOnProject(self.values[1]['value'])):
+			showMessage('Error', 'You have not permissions to assign developers on this project')
+			return
 		if self.rec:
 			self.editRecord()
 		else:
@@ -706,7 +709,8 @@ class ViewTableProjectEmployees(ViewTables):
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			projectEmpolyee = appInst.getRecord('projectEmployees', self.primaryKeys[row])
-			canChange = canChange or appInst.isManagerOnProject(projectEmpolyee.projectId)
+			canChange = canChange or (appInst.isManagerOnProject(projectEmpolyee.projectId) and\
+				projectEmpolyee.employeeId != appInst.getEmployee().id)
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
 

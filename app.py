@@ -81,7 +81,6 @@ class LoginDialog(QtGui.QDialog):
 
 		self.ui = Ui_LoginDialog()
 		self.ui.setupUi(self)
-
 		self.accepted.connect(self.loginPressed)
 
 	@QtCore.pyqtSlot()
@@ -129,7 +128,7 @@ class MainWindow(QtGui.QMainWindow):
 		self.ganttWidget = GanttDialog(self)
 		
 		self.ui.actionAbout.triggered.connect(self.aboutDialog.open)
-		self.ui.actionLogin.triggered.connect(self.loginDialog.open)
+		self.ui.actionLogin.triggered.connect(self.openLoginDialog)
 		self.ui.actionLogout.triggered.connect(self.logout)
 		self.ui.actionLogout.setDisabled(True)
 		
@@ -148,6 +147,11 @@ class MainWindow(QtGui.QMainWindow):
 
 		if not len(appInst.getAdmins()):
 			self.addAdminDialog.open()
+
+	def openLoginDialog(self):
+		self.loginDialog.ui.usernameEdit.setText('')
+		self.loginDialog.ui.passwordEdit.setText('')
+		self.loginDialog.open()
 
 	def logout(self):
 		self.ui.actionLogin.setDisabled(False)

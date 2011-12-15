@@ -275,8 +275,7 @@ class App:
 		return self.curUser.login if self.curUser else None
 
 	def getEmployee(self):
-		return dbi.query(User).filter(self.curUser.login == 
-			User.login).filter(self.curUser.password == User.password).one() if self.curUser else None
+		return dbi.query(Employee).filter(self.curUser.login == Employee.login).one() if self.curUser else None
 		
 	def isManager(self):
 		empl = self.getEmployee()
@@ -297,7 +296,7 @@ class App:
 		if not empl:
 			return False
 		return len(dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == 
-			empl.id).filter(ProjectEmployee.employeeId == projectId).filter(ProjectEmployee.role == 
+			empl.id).filter(ProjectEmployee.projectId == projectId).filter(ProjectEmployee.role == 
 				ROLE_MANAGER).all())
 
 	def isTaskDeveloper(self, taskId):

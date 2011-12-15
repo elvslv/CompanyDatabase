@@ -59,7 +59,6 @@ class GanttTask():
 					if task.getEndDate() > time:
 						time = task.endDate
 				self.beginDate = time
-				print self.beginDate
 			elif self.state == STAGE_TASK_NOT_STARTED:
 				if not len(self.dependsOn):
 					self.beginDate = self.project.startDate
@@ -86,14 +85,11 @@ class GanttTask():
 					if j.completionDate > time:
 						time = j.completionDate
 				self.endDate = time
-			elif self.state == STAGE_TASK_IN_PROGRESS:
-				time = minDate()
-				for j in self.jobs:
-					time = max(time, j.completionDate, 
-						addPlannedTime(j.startDate, self.task.plannedTime))
-				self.endDate = time
 			else:
-				self.endDate = datetime.datetime.today()
+				time = addPlannedTime(self.getStartDate(), self.task.plannedTime)
+				for j in self.jobs:
+					time = max(time, j.completionDate)
+				self.endDate = time
 		if self.endDate.hour == self.getStartDate().hour:
 			self.endDate += datetime.timedelta(hours = 1)
 		self.endDate = self.endDate.replace(minute = 0, second = 0, microsecond = 0)
@@ -130,7 +126,7 @@ class GanttChart():
 		firstDate = self.getFirstDate()
 		lastDate = self.getLastDate()
 		allHours = getHours(firstDate, lastDate)
-		result = '<html><body><table width = "100%" border = "1">'
+		result = '<html><body><table border = "1">'
 		for task in self.tasks:
 			if not task:
 				continue
