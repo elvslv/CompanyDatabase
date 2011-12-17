@@ -411,10 +411,16 @@ class ChangeRecordJobs(ChangeRecord):
 	
 	def checkCorrectness(self):
 		super(ChangeRecordJobs, self).checkCorrectness()
+		if not len(dbi.session.execute('select 1 from tasks where employeeId = %s and id = %s' %(
+			self.values[0]['value'], self.values[1]['value'])).fetchall()):
+			raise DBException('Invalid pair: employee and task')
 		task = dbi.query(Task).filter(Task.id == self.values[1]['value']).one()
 		if task.state == STAGE_TASK_FINISHED:
 			raise DBException('Task is finished')
 		checkCorrectProjectAndContract(task.projectId, self.values[0]['value'])
+		if not(appInst.isAdmin() or appInst.isTaskDeveloper(task.id) or\
+			appInst.isManagerOnProject(task.projectId)):
+			raise DBException('You have not permission for this operation')
 		startDate = self.values[2]['value']
 		completionDate = self.values[3]['value']
 		if startDate >= completionDate:
@@ -423,6 +429,7 @@ class ChangeRecordJobs(ChangeRecord):
 			where a.id = b.projectId and b.id = %s''' % self.values[1]['value']).fetchone()
 		if datetime.datetime.strptime(str(startDate), "%Y-%m-%dT%H:%M:%S") < projDate[0]:
 			raise DBException('Task jobs can not start earlier than project')
+		
 		self.change()
 
 class ChangeRecordTaskDependencies(ChangeRecord):

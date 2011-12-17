@@ -167,7 +167,7 @@ class App:
 		vals = [value['value'] for value in values]
 		tmp = obj(*vals)
 		if str(table) == 'jobs':
-			taskId = obj.taskId
+			taskId = tmp.taskId
 		dbi.addUnique(tmp)
 		if str(table) == 'jobs':
 			task = dbi.query(Task).filter(Task.id == taskId).one()
