@@ -8,6 +8,7 @@ from Utils import *
 from misc import *
 from PyQt4 import QtGui, QtCore, Qt
 from DB.Db import *
+from sqlalchemy.exc import IntegrityError
 
 def getEdit(parent, field, val):
 	if field.foreign_keys:
@@ -167,7 +168,6 @@ class ChangeRecord(QtGui.QDialog):
 		else:
 			self.addRecord()
 
-
 	def checkForEmptiness(self):
 		correct = True
 		for edit in self.edits:
@@ -202,8 +202,11 @@ class ChangeRecordUsers(ChangeRecord):
 		super(ChangeRecordUsers, self).__init__(parent, tableName, keys)
 
 	def addRecord(self):
-		super(ChangeRecordUsers, self).addRecord()
-		self.tableView.addUserSignal.emit(self.values[0]['value'])
+		try:
+			super(ChangeRecordUsers, self).addRecord()
+			self.tableView.addUserSignal.emit(self.values[0]['value'])
+		except IntegrityError:
+			showMessage('Error', 'The same record already exists')
 	
 	def checkCorrectness(self):
 		super(ChangeRecordUsers, self).checkCorrectness()
@@ -226,6 +229,18 @@ class ChangeRecordEmployees(ChangeRecord):
 		
 	def checkCorrectness(self):
 		super(ChangeRecordEmployees, self).checkCorrectness()
+		if self.rec:
+			if len(dbi.session.execute('''
+				select 1 from projectEmployees as a where a.employeeId = %s
+			''' % self.keys[0]['value']).fetchall()):
+				if self.values[1]['value'] != dbi.session.execute('''select companyId 
+					from employees where id = %s''' % self.keys[0]['value']).fetchone()[0]:
+					if len(dbi.session.execute('''
+						select 1 from projects as a, projectEmployees as b where 
+						a.id = b.projectId and b.employeeId = %s and a.finished = FALSE
+					''' % self.keys[0]['value']).fetchall()):
+						raise DBException('Employee works on the unfinished project from another company')
+				
 		self.change()
 
 	def createEdits(self):
@@ -299,7 +314,6 @@ class ChangeRecordContracts(ChangeRecord):
 			raise DBException('Can not make contract on finished project')
 		self.change()
 
-
 class ChangeRecordProjectEmployees(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
 		self.headers = ['employee', 'project', 'role']
@@ -307,9 +321,13 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 		
 	def checkCorrectness(self):
 		super(ChangeRecordProjectEmployees, self).checkCorrectness()
-		checkCorrectProjectAndContract(self.values[1]['value'], self.values[0]['value'])
+		empl = self.values[0]['value']
+		proj = self.values[1]['value']
+		checkCorrectProjectAndContract(proj, empl)
 		if not (appInst.isAdmin() or appInst.isManagerOnProject(self.values[1]['value'])):
 			raise DBException('You have not permissions to assign developers on this project')
+		dbi.session.execute('''select 1 from ''')
+		dbi.query(Task).filter(Task.employeeId == empl).filter()
 		self.change()
 
 class ChangeRecordTasks(ChangeRecord):

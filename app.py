@@ -24,10 +24,10 @@ class MainApplication(QtGui.QApplication):
 		self.mainWindow.showNormal()
 		try:
 			super(MainApplication, self).exec_()
+		except IntegrityError:
+			showMessage('Error', 'The same value already exists')
 		except DBException, e: 
 			showMessage('Error', e.value)
-		except IntegrityError:
-			showMessage('Error', 'The same record already exists')
 
 	def login(self, username, password):
 		appInst.setCurUser(username, password)

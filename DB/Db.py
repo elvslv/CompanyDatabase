@@ -7,6 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from misc import *
 
 from dbExceptions import DBException
+from Utils import showMessage
 	
 Base = declarative_base()
 
@@ -213,8 +214,11 @@ class Database:
 		self.session.rollback()
 
 	def add(self, obj):
-		self.session.add(obj)
-		self.flush(obj)
+		#try:
+			self.session.add(obj)
+			self.flush(obj)
+		#except IntegrityError:
+		#	showMessage('Error', 'The same record already exists')
 
 	def addAll(self, objs):
 		self.session.add_all(objs)
@@ -242,8 +246,11 @@ class Database:
 			return None
 
 	def addUnique(self, obj, msg = None):
-		self.add(obj)
-		self.flush(obj)
+		#try:
+			self.session.add(obj)
+			self.flush(obj)
+		#except IntegrityError:
+		#	showMessage('Error', 'The same record already exists')
 
 def getDbInstance():
 	if Database.instance is None:
