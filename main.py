@@ -311,7 +311,7 @@ class App:
 			empl.id).filter(Task.id == taskId).all())
 
 	def cntSum(self, filterParams = None):
-		qStr = '''select max(unix_timestamp(completionDate) - unix_timestamp(startDate)) from jobs as a, 
+		qStr = '''select sum(unix_timestamp(completionDate) - unix_timestamp(startDate)) from jobs as a, 
 			tasks as b, employees as c where a.employeeId = c.id and b.id = a.taskId'''
 		if filterParams:
 			if 'employeeId' in filterParams:
@@ -320,7 +320,9 @@ class App:
 				qStr += ' and b.id = %s' % filterParams['taskId']
 			if 'projectId' in filterParams:
 				qStr += ' and b.projectId = %s' % filterParams['projectId']
-		return datetime.timedelta(seconds = dbi.session.execute(qStr).fetchone()[0])
+		res = dbi.session.execute(qStr).fetchone()[0]
+		print res
+		return datetime.timedelta(seconds = int(res))
 
 	def getNotEmptyProjects(self):
 		return dbi.session.execute('''select * from projects where id in 
