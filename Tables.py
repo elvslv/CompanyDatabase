@@ -378,6 +378,9 @@ class ChangeRecordTasks(ChangeRecord):
 			(not self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
 			Task.state != STAGE_TASK_FINISHED).all())):
 			raise DBException('Employee has tasks in progress')
+		if not len(dbi.session.execute('''select 1 from projectEmployees where projectId = %s 
+			and employeeId = %s''' % (projectId, employeeId)).fetchall()):
+			raise DBException('Invalid pair: employee and project')
 		if self.rec:
 			if self.checkBox.isChecked():
 				if len(dbi.query(TasksDependency, Task).filter(TasksDependency.slaveId == 
