@@ -295,9 +295,10 @@ class ChangeRecordProjects(ChangeRecord):
 		super(ChangeRecordProjects, self).checkCorrectness()
 		if self.rec:
 			startDate = self.values[1]['value']
-			if len(dbi.session.execute('''select 1 from jobs as a, tasks as b, projects as c where
-				a.taskId = b.id and c.name = "%s" and b.projectId = c.id and unix_timestamp(a.startDate) < %s''' % (self.rec[0], 
-					QtCore.QDateTime.fromString(startDate).toTime_t())).fetchall()):
+			if len(dbi.session.execute('''select 1 from jobs as a, tasks as b, 
+				projects as c where a.taskId = b.id and c.name = "%s" and 
+				b.projectId = c.id and unix_timestamp(a.startDate) < %s''' % (
+				self.rec[0], QtCore.QDateTime.fromString(startDate).toTime_t())).fetchall()):
 				raise DBException('Task jobs can not start earlier than project')
 		self.change()
 
@@ -308,10 +309,19 @@ class ChangeRecordContracts(ChangeRecord):
 
 	def checkCorrectness(self):
 		super(ChangeRecordContracts, self).checkCorrectness()
-		self.getValues()
-		project = dbi.query(Project).filter(Project.id == self.values[1]['value']).one()
+		comp = self.values[0]['value']
+		proj = self.values[1]['value']
+		project = dbi.query(Project).filter(Project.id == proj).one()
 		if project.finished:
 			raise DBException('Can not make contract on finished project')
+		#if self.rec:
+		#	if comp != self.rec.companyId or proj != self.rec.projectId:
+		#		if len(dbi.session.execute('''
+		#			select 1 from projectEmployees as a, contracts as b, employees as c, 
+		#			projects as d where a.projectId = b.projectId and b.projectId = %s and 
+		#			a.employeeId = c.id and c.companyId = %s and d.id = a.projectId
+		#			and d.finished = FALSE''' % (proj, comp))):
+		#			raise DBException('''There are employess from another companies that work on unfinished projects''')
 		self.change()
 
 class ChangeRecordProjectEmployees(ChangeRecord):
@@ -326,8 +336,13 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 		checkCorrectProjectAndContract(proj, empl)
 		if not (appInst.isAdmin() or appInst.isManagerOnProject(self.values[1]['value'])):
 			raise DBException('You have not permissions to assign developers on this project')
-		dbi.session.execute('''select 1 from ''')
-		dbi.query(Task).filter(Task.employeeId == empl).filter()
+		if self.rec:
+			if empl != self.rec.employeeId or proj != self.rec.projectId:
+				if len(dbi.session.execute('''
+					select 1 from tasks where employeeId = %s and projectId = %s
+					and state <> %s''' % (self.rec.employeeId, self.rec.projectId,
+					STAGE_TASK_FINISHED)).fetchall()):
+						raise DBException('''Employee has unfinished tasks on other projects''')
 		self.change()
 
 class ChangeRecordTasks(ChangeRecord):
@@ -554,7 +569,9 @@ class ViewTableCompanies(ViewTables):
 	def disableButtons(self):
 		super(ViewTableCompanies, self).disableButtons()
 		row = self.ui.tableWidget.currentRow()
-		disable = not appInst.isAdmin() or (appInst.isAdmin() and self.primaryKeys[row][0]['value'] == 1)
+		disable = not appInst.isAdmin() or (not len(self.ui.tableWidget.selectedItems()) and \
+			appInst.isAdmin()) or(len(self.ui.tableWidget.selectedItems()) and \
+			appInst.isAdmin() and self.primaryKeys[row][0]['value'] == 1)
 		self.ui.deleteRecordButton.setDisabled(disable)
 
 class ViewTableUsers(ViewTables):
