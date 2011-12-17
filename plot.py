@@ -127,6 +127,7 @@ class GanttChart():
 		lastDate = self.getLastDate()
 		allHours = getHours(firstDate, lastDate)
 		result = '<html><body><table border = "1">'
+		result += '<th colspan = %s>Gantt diagram</th>' % (allHours + 1)
 		for task in self.tasks:
 			if not task:
 				continue
@@ -159,9 +160,12 @@ class GanttChart():
 		result += '<td>Hour</td>'
 		for h in range(allHours):
 			newDate = (firstDate + datetime.timedelta(hours = h))
-			result += '<td style = "font-size: 6;">%s</td>' % newDate.hour
+			result += '<td style = "font-size: 8;">%s</td>' % newDate.hour
 		result += '</tr>'
-		
+
+		result += '</table><table><th colspan = 2>Denotation:</th>'
+		for i, den in enumerate(['Task is not started', 'Task is in progress', 'Task finished']):
+			result += '<tr><td style = "background-color: %s; width: 25px;">&nbsp;</td><td>%s</td></tr>' % (colors[i], den)
 		result += '</table></body></html>'
 		diagram = open('diagram.html', 'w')
 		diagram.write(result)
