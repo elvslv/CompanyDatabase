@@ -562,7 +562,7 @@ class ViewTableUsers(ViewTables):
 			disable = user.login != appInst.getLogin() and not appInst.isAdmin()
 		
 		self.ui.editRecordButton.setDisabled(disable)
-		disable = disable or len(appInst.getAdmins()) == 1
+		disable = disable or (user.admin and len(appInst.getAdmins()) == 1)
 		self.ui.deleteRecordButton.setDisabled(disable)
 
 class ViewTableEmployees(ViewTables):

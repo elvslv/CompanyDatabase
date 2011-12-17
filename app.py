@@ -16,6 +16,7 @@ from Utils import showMessage
 from Tables import *
 from misc import *
 from plot import GanttChart
+from sqlalchemy.exc import IntegrityError
 
 class MainApplication(QtGui.QApplication):
 	def exec_(self):
@@ -25,6 +26,8 @@ class MainApplication(QtGui.QApplication):
 			super(MainApplication, self).exec_()
 		except DBException, e: 
 			showMessage('Error', e.value)
+		except IntegrityError:
+			showMessage('Error', 'The same record already exists')
 
 	def login(self, username, password):
 		appInst.setCurUser(username, password)

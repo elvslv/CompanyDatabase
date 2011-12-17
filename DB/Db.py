@@ -242,11 +242,8 @@ class Database:
 			return None
 
 	def addUnique(self, obj, msg = None):
-		try:
-			self.add(obj)
-			self.flush(obj)
-		except IntegrityError:
-			raise DBException(msg if msg else "IntegrityError")
+		self.add(obj)
+		self.flush(obj)
 
 def getDbInstance():
 	if Database.instance is None:
