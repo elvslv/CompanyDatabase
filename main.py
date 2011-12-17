@@ -14,36 +14,6 @@ class AppUser:
 		self.password = password
 		self.admin = admin
 
-	def canUpdate(self, tableName):
-		return True
-
-	def getTable(self, tableName):
-		return appInst.getTable(tableName)
-
-	def getHeaders(self, tableName):
-		return appInst.getHeaders(tableName)
-
-	def getVisibleHeaders(self, table):
-		return appInst.getVisibleHeaders(table)
-
-	def selectAll(self, tableName):
-		return appInst.selectAll(tableName)
-
-	def getRecord(self, tableName, keys):
-		return appInst.getRecord(tableName, keys)
-
-	def getForeignValues(self, table, field):
-		return appInst.getForeignValues(table, field)
-
-	def insert(self, table, values):
-		return appInst.insert(table, values)
-		
-	def update(self, table, keys, values):
-		return appInst.update(table, keys, values)
-
-	def delete(self, table, keys):
-		return appInst.delete(table, keys)
-
 class App:
 	instance = None
 	curUser = None 
