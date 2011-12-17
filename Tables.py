@@ -1,6 +1,7 @@
 import sqlalchemy
 import datetime
 from design_files.widget_table import Ui_ViewTables
+from DB.dbExceptions import DBException
 from main import appInst
 from sqlalchemy import *
 from Utils import *
@@ -22,7 +23,7 @@ def getEdit(parent, field, val):
 	if isinstance(field.type, Integer):
 		return createIntegerBox(parent, field, val)
 
-	showMessage('Error', 'Unknown type') ##just for debugging
+	raise DBException('Unknown type')
 
 def createIntegerBox(parent, field, val):
 	result = QtGui.QSpinBox(parent)
@@ -122,13 +123,8 @@ class ChangeRecord(QtGui.QDialog):
 		self.setLayout(self.gbox)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
+		self.checkForEmptiness()
+		self.getValues()
 
 	def getValue(self, edit):
 		if isinstance(edit, QtGui.QSpinBox):
@@ -144,7 +140,7 @@ class ChangeRecord(QtGui.QDialog):
 			return edit.isChecked()
 		if isinstance(edit, QtGui.QDateTimeEdit):
 			return edit.dateTime().toString(QtCore.Qt.ISODate)
-		showMessage('Error', 'Unknown edit type')
+		raise DBException('Unknown edit type')
 
 	def getValues(self):
 		self.values = list()
@@ -165,7 +161,14 @@ class ChangeRecord(QtGui.QDialog):
 		appInst.updateTableViews()
 		self.close()
 
-	def editsAreNotEmpty(self):
+	def change(self):
+		if self.rec:
+			self.editRecord()
+		else:
+			self.addRecord()
+
+
+	def checkForEmptiness(self):
 		correct = True
 		for edit in self.edits:
 			if isinstance(edit, QtGui.QSpinBox):
@@ -176,7 +179,8 @@ class ChangeRecord(QtGui.QDialog):
 				correct = correct and len(edit.currentText())
 			if isinstance(edit, QtGui.QDateTimeEdit):
 				correct = correct and len(edit.dateTime().toString(QtCore.Qt.ISODate))
-		return correct
+		if not correct:
+			raise DBException('Fields must not be empty')
 
 class ChangeRecordCompany(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
@@ -184,19 +188,13 @@ class ChangeRecordCompany(ChangeRecord):
 		super(ChangeRecordCompany, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
+		super(ChangeRecordCompany, self).checkCorrectness()
 		correct = True
 		for edit in self.edits:
 			correct = correct and len(edit.text()) > 0
 		if not correct:
-			showMessage('Error', 'Company name and details must not be empty')
-			return False
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
+			raise DBException('Company name and details must not be empty')
+		self.change()
 
 class ChangeRecordUsers(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
@@ -208,10 +206,7 @@ class ChangeRecordUsers(ChangeRecord):
 		self.tableView.addUserSignal.emit(self.values[0]['value'])
 	
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-
+		super(ChangeRecordUsers, self).checkCorrectness()
 		correct = True
 		for edit in self.edits:
 			if edit.field == 'login':
@@ -219,13 +214,9 @@ class ChangeRecordUsers(ChangeRecord):
 			elif edit.field == 'password':
 				correct = correct and len(edit.text()) >= MIN_PASSWORD_LENGTH
 		if not correct:
-			showMessage('Error', 'Min login length is %d, min password length is%d'%(
+			raise DBException('Min login length is %d, min password length is%d'%(
 				MIN_LOGIN_LENGTH, MIN_PASSWORD_LENGTH))
-			return False
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
+		self.change()
 
 class ChangeRecordEmployees(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
@@ -234,14 +225,8 @@ class ChangeRecordEmployees(ChangeRecord):
 		self.addUserSignal.connect(self.addedUser)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
+		super(ChangeRecordEmployees, self).checkCorrectness()
+		self.change()
 
 	def createEdits(self):
 		self.edits = []
@@ -292,20 +277,14 @@ class ChangeRecordProjects(ChangeRecord):
 		super(ChangeRecordProjects, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-		self.getValues()
+		super(ChangeRecordProjects, self).checkCorrectness()
 		if self.rec:
 			startDate = self.values[1]['value']
 			if len(dbi.session.execute('''select 1 from jobs as a, tasks as b, projects as c where
 				a.taskId = b.id and c.name = "%s" and b.projectId = c.id and unix_timestamp(a.startDate) < %s''' % (self.rec[0], 
 					QtCore.QDateTime.fromString(startDate).toTime_t())).fetchall()):
-				showMessage('Error', 'Task jobs can not start earlier than project')
-				return
-			self.editRecord()
-		else:
-			self.addRecord()
+				raise DBException('Task jobs can not start earlier than project')
+		self.change()
 
 class ChangeRecordContracts(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
@@ -313,18 +292,12 @@ class ChangeRecordContracts(ChangeRecord):
 		super(ChangeRecordContracts, self).__init__(parent, tableName, keys)
 
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
+		super(ChangeRecordContracts, self).checkCorrectness()
 		self.getValues()
 		project = dbi.query(Project).filter(Project.id == self.values[1]['value']).one()
 		if project.finished:
-			showMessage('Error', 'Can not make contract on finished project')
-			return
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
+			raise DBException('Can not make contract on finished project')
+		self.change()
 
 
 class ChangeRecordProjectEmployees(ChangeRecord):
@@ -333,22 +306,11 @@ class ChangeRecordProjectEmployees(ChangeRecord):
 		super(ChangeRecordProjectEmployees, self).__init__(parent, tableName, keys)
 		
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-		self.getValues()
-		try:
-			checkCorrectProjectAndContract(self.values[1]['value'], self.values[0]['value'])
-		except DBException, e:
-			showMessage('Error', e.value)
-			return
+		super(ChangeRecordProjectEmployees, self).checkCorrectness()
+		checkCorrectProjectAndContract(self.values[1]['value'], self.values[0]['value'])
 		if not (appInst.isAdmin() or appInst.isManagerOnProject(self.values[1]['value'])):
-			showMessage('Error', 'You have not permissions to assign developers on this project')
-			return
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
+			raise DBException('You have not permissions to assign developers on this project')
+		self.change()
 
 class ChangeRecordTasks(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
@@ -374,42 +336,28 @@ class ChangeRecordTasks(ChangeRecord):
 				self.values.append({'name': 'state', 'value': STAGE_TASK_NOT_STARTED})
 
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-		self.getValues()
-		
+		super(ChangeRecordTasks, self).checkCorrectness()
 		projectId = self.values[1]['value']
 		employeeId = self.values[2]['value']
-		try:
-			checkCorrectProjectAndContract(projectId, employeeId)
-		except DBException, e:
-			showMessage('Error', e.value)
-			return
+		checkCorrectProjectAndContract(projectId, employeeId)
 		if (self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
 			Task.state != STAGE_TASK_FINISHED).filter(Task.id != self.keys[0]['value']).all())) or\
 			(not self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
 			Task.state != STAGE_TASK_FINISHED).all())):
-			showMessage('Error', 'Employee has tasks in progress')
-			return
+			raise DBException('Employee has tasks in progress')
 		if self.rec:
 			if self.checkBox.isChecked():
 				if len(dbi.query(TasksDependency, Task).filter(TasksDependency.slaveId == 
 					self.keys[0]['value']).filter(Task.id == TasksDependency.masterId).filter(
 						Task.state != STAGE_TASK_FINISHED).all()):
-					showMessage('Error', 'There are unfinished task dependencies')
-					return
+					raise DBException('There are unfinished task dependencies')
 			else:
 				if len(dbi.session.execute('''select 1 from tasksDependencies as a, 
 					tasks as b where a.masterId=%s and b.id=a.slaveId and b.state=%s''' %(
 					self.keys[0]['value'], STAGE_TASK_FINISHED)).fetchall()):
-					showMessage('Error', 'There are finished dependent tasks')
-					return
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
-
+					raise DBException('There are finished dependent tasks')
+		self.change()
+		
 	def editRecord(self):
 		values = dict()
 		for i, edit in enumerate(self.edits):
@@ -426,34 +374,20 @@ class ChangeRecordJobs(ChangeRecord):
 		super(ChangeRecordJobs, self).__init__(parent, tableName, keys)
 	
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-		self.getValues()
+		super(ChangeRecordJobs, self).checkCorrectness()
 		task = dbi.query(Task).filter(Task.id == self.values[1]['value']).one()
 		if task.state == STAGE_TASK_FINISHED:
-			showMessage('Error', 'Task is finished')
-			return
-		try:
-			checkCorrectProjectAndContract(task.projectId, self.values[0]['value'])
-		except DBException, e:
-			showMessage('Error', e.value)
-			return
+			raise DBException('Task is finished')
+		checkCorrectProjectAndContract(task.projectId, self.values[0]['value'])
 		startDate = self.values[2]['value']
 		completionDate = self.values[3]['value']
 		if startDate >= completionDate:
-			showMessage('Error', 'Start date must be earlier than completion date')
-			return
+			raise DBException('Start date must be earlier than completion date')
 		projDate = dbi.session.execute('''select a.startDate from projects as a, tasks as b 
 			where a.id = b.projectId and b.id = %s''' % self.values[1]['value']).fetchone()
 		if datetime.datetime.strptime(str(startDate), "%Y-%m-%dT%H:%M:%S") < projDate[0]:
-			showMessage('Error', 'Task jobs can not start earlier than project')
-			return
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
-
+			raise DBException('Task jobs can not start earlier than project')
+		self.change()
 
 class ChangeRecordTaskDependencies(ChangeRecord):
 	def __init__(self, parent, tableName, keys = None):
@@ -461,20 +395,15 @@ class ChangeRecordTaskDependencies(ChangeRecord):
 		super(ChangeRecordTaskDependencies, self).__init__(parent, tableName, keys)
 
 	def checkCorrectness(self):
-		if not self.editsAreNotEmpty():
-			showMessage('Error', 'Fields must not be empty')
-			return
-		self.getValues()
+		super(ChangeRecordTaskDependencies, self).checkCorrectness()
 		masterId = int(self.values[0]['value'])
 		slaveId = int(self.values[1]['value'])
 		project1 = appInst.getProjectByTask(masterId)
 		project2 = appInst.getProjectByTask(slaveId)
 		if project1.id != project2.id:
-			showMessage('Error', 'Chosen tasks must belong to the same project')
-			return
+			raise DBException('Chosen tasks must belong to the same project')
 		if masterId == slaveId:
-			showMessage('Error', 'Chosen tasks must be different')
-			return
+			raise DBException('Chosen tasks must be different')
 		graph, maxTaskId = appInst.getTasksDependencyGraph(slaveId)
 		if graph:
 			graph[slaveId].append(masterId)
@@ -491,13 +420,9 @@ class ChangeRecordTaskDependencies(ChangeRecord):
 				return False
 				
 			if dfs(slaveId):
-				showMessage('Error', 'Cycle detected')
-				return
-			
-		if self.rec:
-			self.editRecord()
-		else:
-			self.addRecord()
+				raise DBException('Cycle detected')
+				
+		self.change()
 
 class ViewTables(QtGui.QWidget):
 	def __init__(self, parent, tableName, isReport = None):
@@ -736,7 +661,7 @@ class ViewTableTasks(ViewTables):
 			row = self.ui.tableWidget.currentRow()
 			task = appInst.getRecord('tasks', self.primaryKeys[row])
 			canChange = canChange or appInst.isManagerOnProject(task.projectId) or\
-				appInst.isTaskDeveloper(task.id)
+				appInst.isTaskDeveloper(self.primaryKeys[row][0])
 		self.ui.editRecordButton.setDisabled(not canChange)
 		self.ui.deleteRecordButton.setDisabled(not canChange)
 

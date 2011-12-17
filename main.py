@@ -209,6 +209,10 @@ class App:
 	def updateTableViews(self):
 		for table in self.tables:
 			table.fillCells()
+			
+	def disableButtons(self):
+		for table in self.tables:
+			table.disableButtons()
 
 	def addUser(self, username, password, isAdmin):
 		dbi.addUnique(User(username, password, isAdmin), 'User with the same login already exists')

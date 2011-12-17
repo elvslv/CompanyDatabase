@@ -21,22 +21,22 @@ class MainApplication(QtGui.QApplication):
 	def exec_(self):
 		self.mainWindow = MainWindow()
 		self.mainWindow.showNormal()
-		super(MainApplication, self).exec_()
+		try:
+			super(MainApplication, self).exec_()
+		except DBException, e: 
+			showMessage('Error', e.value)
 
 	def login(self, username, password):
 		appInst.setCurUser(username, password)
 		self.mainWindow.changeState('Hello, %s! %s' %(username, 
 			"You're admin" if appInst.isAdmin() else ''))
+		appInst.disableButtons()
 		return appInst.curUser
 
 	def logout(self):
 		appInst.curUser = None
+		appInst.disableButtons()
 		self.mainWindow.changeState('Please login')
-
-	@QtCore.pyqtSlot()
-	def updateTableViews(self):
-		for w in app.mainWindow.ui.mdiArea.subWindowList():
-			w.widget().fillCells()
 
 app = MainApplication(sys.argv)
 
@@ -103,7 +103,7 @@ class GanttDialog(QtGui.QDialog):
 
 	def generateDiagram(self):
 		if not self.ui.projectsComboBox.currentText():
-			showMessage('Error', "There aren't projects in db")
+			raise DBException("There aren't projects in db")
 			return
 		projectId = self.ui.projectsComboBox.itemData(self.ui.projectsComboBox.currentIndex()).toInt()[0]
 		ganttDiagram = GanttChart(dbi.query(Task).filter(Task.projectId == projectId).all())
