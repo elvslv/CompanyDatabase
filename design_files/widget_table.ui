@@ -34,6 +34,18 @@
      <height>291</height>
     </rect>
    </property>
+   <property name="editTriggers">
+    <set>QAbstractItemView::NoEditTriggers</set>
+   </property>
+   <property name="tabKeyNavigation">
+    <bool>false</bool>
+   </property>
+   <property name="showDropIndicator" stdset="0">
+    <bool>false</bool>
+   </property>
+   <property name="dragDropOverwriteMode">
+    <bool>false</bool>
+   </property>
   </widget>
   <widget class="QPushButton" name="addRecordButton">
    <property name="geometry">

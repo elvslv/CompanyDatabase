@@ -21,11 +21,8 @@ class App:
 	def __init__(self):
 		self.tables = list()
 
-	def getUser(self, login, password, msg = None):
-		try:
-			return dbi.query(User).filter(login == User.login).filter(password == User.password).one()
-		except NoResultFound:
-			raise DBException(msg if msg else "NoResultFound")
+	def getUser(self, login, password):
+		return dbi.query(User).filter(login == User.login).filter(password == User.password).one()
 
 	def setCurUser(self, login, password):
 		user = self.getUser(login, password)
@@ -88,10 +85,12 @@ class App:
 				columns.append(foreignColumn)
 			else:
 				columns.append(column)
+		print tableName
 		if tableName == 'tasksDependencies':
 			q = dbi.session.execute('''select a.name, b.name from tasks as a, 
 				tasks as b, tasksDependencies as c
 				where a.id = c.masterId and b.id = c.slaveId''').fetchall()
+			print q
 			return q
 		elif tableName == 'jobs' and isReport:
 			qStr = '''select c.name, b.name, a.description, unix_timestamp(a.completionDate) 
@@ -178,6 +177,7 @@ class App:
 
 	def updateTableViews(self):
 		for table in self.tables:
+			print table
 			table.fillCells()
 			
 	def disableButtons(self):
@@ -218,11 +218,11 @@ class App:
 	def getMaxTasksNumOnProjectsWithManager(self):
 		if not self.curUser:
 			return 0
-		projects = dbi.query(ProjectEmployee.projectId).filter(ProjectEmployee.employeeId == 
+		projects = dbi.query(ProjectEmployee).filter(ProjectEmployee.employeeId == 
 			self.getEmployee().id).filter(ProjectEmployee.role == ROLE_MANAGER).all()
 		maxi = 0
 		for project in projects:
-			m = self.getTasksNumOnProject(project.id)
+			m = self.getTasksNumOnProject(project.projectId)
 			if m > maxi:
 				maxi = m
 		return maxi
@@ -291,10 +291,10 @@ class App:
 			if 'projectId' in filterParams:
 				qStr += ' and b.projectId = %s' % filterParams['projectId']
 		res = dbi.session.execute(qStr).fetchone()[0]
-		print res
 		return datetime.timedelta(seconds = int(res))
 
 	def getNotEmptyProjects(self):
+		#dbi.query(Project).filter(Project.id == Task.projectId).all()
 		return dbi.session.execute('''select * from projects where id in 
 			(select projectId from tasks)''').fetchall()
 

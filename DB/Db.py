@@ -30,9 +30,10 @@ DB_STRING = """mysql+mysqldb://%s:%s@%s:%d/%s""" % \
 
 class Company(Base):
 	__tablename__ = 'companies'
-
+	__table_args__ = {'mysql_engine':'InnoDB'}
+	
 	id = pkeyIndex()
-	name = Column(Text, nullable = False)
+	name = Column(String(512), nullable = False, unique = True)
 	details = Column(Text, nullable = False)
 
 	def __init__(self, name, details):
@@ -41,6 +42,7 @@ class Company(Base):
 
 class User(Base):
 	__tablename__ = 'users'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	login = Column(String(MAX_LOGIN_LENGTH), primary_key = True)
 	password = Column(Text, nullable = False)
@@ -53,9 +55,10 @@ class User(Base):
 
 class Employee(Base):
 	__tablename__ = 'employees'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
-	name = Column(Text, nullable = False)
+	name = Column(String(512), nullable = False, unique = True)
 	companyId = fkeyIndex('companies.id')
 	login = Column(String(MAX_LOGIN_LENGTH), 
 		ForeignKey('users.login', onupdate='CASCADE', ondelete='CASCADE'), 
@@ -72,9 +75,10 @@ class Employee(Base):
 
 class Project(Base):
 	__tablename__ = 'projects'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
-	name = Column(Text, nullable = False)
+	name = Column(String(512), nullable = False, unique = True)
 	startDate = Column(DateTime, nullable = False)
 	finished = Column(Boolean, default = False)
 
@@ -85,11 +89,12 @@ class Project(Base):
 
 class Contract(Base):
 	__tablename__ = 'contracts'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 
-	companyId = Column(Integer, ForeignKey('companies.id'), primary_key=True,
-		index = True)
-	projectId = Column(Integer, ForeignKey('projects.id'), primary_key=True,
-		index = True)
+	companyId = Column(Integer, ForeignKey('companies.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), primary_key=True, index = True)
+	projectId = Column(Integer, ForeignKey('projects.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), primary_key=True, index = True)
 	activity = Column(Integer, default = ACTIVITY_CONTRACT_MADE)
 
 	company = relationship(Company, backref=backref('contracts', cascade = "all,delete"))
@@ -102,11 +107,12 @@ class Contract(Base):
 
 class ProjectEmployee(Base):
 	__tablename__ = 'projectEmployees'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 
-	employeeId = Column(Integer, ForeignKey('employees.id'), primary_key=True,
-		index = True)
-	projectId = Column(Integer, ForeignKey('projects.id'), primary_key=True,
-		index = True)
+	employeeId = Column(Integer, ForeignKey('employees.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), primary_key=True, index = True)
+	projectId = Column(Integer, ForeignKey('projects.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), primary_key=True, index = True)
 	role = Column(Integer, default = ROLE_DEVELOPER)
 
 	employee = relationship(Employee, backref=backref('projects', cascade = "all,delete"))
@@ -119,9 +125,10 @@ class ProjectEmployee(Base):
 
 class Task(Base):
 	__tablename__ = 'tasks'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
-	name = Column(Text, nullable = False)
+	name = Column(String(512), nullable = False, unique = True)
 	projectId = fkeyIndex('projects.id')
 	employeeId = fkeyIndex('employees.id')
 	plannedTime = Column(Integer, nullable = False)
@@ -140,12 +147,13 @@ class Task(Base):
 
 class Job(Base):
 	__tablename__ = 'jobs'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 
 	id = pkeyIndex()
-	employeeId = Column(Integer, ForeignKey('employees.id'), 
-		index = True)
-	taskId = Column(Integer, ForeignKey('tasks.id'), 
-		index = True)
+	employeeId = Column(Integer, ForeignKey('employees.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), index = True)
+	taskId = Column(Integer, ForeignKey('tasks.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), index = True)
 	startDate = Column(DateTime, nullable = False)
 	completionDate = Column(DateTime, nullable = False)
 	description = Column(Text)
@@ -162,11 +170,12 @@ class Job(Base):
 
 class TasksDependency(Base):
 	__tablename__ = 'tasksDependencies'
+	__table_args__ = {'mysql_engine':'InnoDB'}
 	
-	masterId = Column(Integer, ForeignKey('tasks.id'), primary_key=True, 
-		index = True)
-	slaveId = Column(Integer, ForeignKey('tasks.id'), primary_key=True,
-		index = True)
+	masterId = Column(Integer, ForeignKey('tasks.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), primary_key=True, index = True)
+	slaveId = Column(Integer, ForeignKey('tasks.id', onupdate='CASCADE', 
+		ondelete='CASCADE'), primary_key=True, index = True)
 
 	def __init__(self, masterId, slaveId):
 		self.masterId = masterId

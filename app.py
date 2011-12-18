@@ -97,12 +97,15 @@ class GanttDialog(QtGui.QDialog):
 
 		self.ui = Ui_ganttDialog()
 		self.ui.setupUi(self)
+		self.update()
+		self.ui.generateBtn.clicked.connect(self.generateDiagram)
 
+	def update(self):
+		self.ui.projectsComboBox.clear()
+		self.ui.webView.setHtml('<html><body></body></html>')
 		projects = appInst.getNotEmptyProjects()
 		for project in projects:
 			self.ui.projectsComboBox.addItem(project.name, project.id)
-
-		self.ui.generateBtn.clicked.connect(self.generateDiagram)
 
 	def generateDiagram(self):
 		if not self.ui.projectsComboBox.currentText():
@@ -117,8 +120,9 @@ class MainWindow(QtGui.QMainWindow):
 		return lambda: self.showTable(tableName, param)
 
 	def showGanttDiagram(self):
-		self.ganttWidget.open()
-		
+		self.ganttDiagram.update()
+		self.ganttDiagram.open()
+
 	def __init__(self):
 		super(MainWindow, self).__init__()
 
@@ -128,12 +132,13 @@ class MainWindow(QtGui.QMainWindow):
 		self.aboutDialog = AboutDialog(self)
 		self.loginDialog = LoginDialog(self)
 		self.addAdminDialog = AddAdminDialog(self)
-		self.ganttWidget = GanttDialog(self)
+		self.ganttDiagram = GanttDialog(self)
 		
 		self.ui.actionAbout.triggered.connect(self.aboutDialog.open)
 		self.ui.actionLogin.triggered.connect(self.openLoginDialog)
 		self.ui.actionLogout.triggered.connect(self.logout)
 		self.ui.actionLogout.setDisabled(True)
+		self.ui.actionExit_2.triggered.connect(self.close)
 		
 		self.ui.actionViewCompanies.triggered.connect(self.showTableTrigger('companies'))
 		self.ui.actionViewUsers.triggered.connect(self.showTableTrigger('users'))
@@ -163,12 +168,15 @@ class MainWindow(QtGui.QMainWindow):
 	
 	@QtCore.pyqtSlot(str, str)
 	def login(self, username, password):
-		self.ui.actionLogin.setDisabled(True)
-		self.ui.actionLogout.setDisabled(False)
-		app.login(username, password)
+		try:
+			app.login(username, password)
+			self.ui.actionLogin.setDisabled(True)
+			self.ui.actionLogout.setDisabled(False)
+		except NoResultFound:
+			raise DBException('Invalid login or password')
 		
 	def changeState(self, state):
-		self.ui.curStateLabel.setText(state)
+		self.ui.statusLabel.setText(state)
 
 	def showTable(self, tableName, param):
 		if tableName == 'companies':

@@ -373,6 +373,8 @@ class ChangeRecordTasks(ChangeRecord):
 		projectId = self.values[1]['value']
 		employeeId = self.values[2]['value']
 		checkCorrectProjectAndContract(projectId, employeeId)
+		if not (appInst.isAdmin() or appInst.isManagerOnProject(projectId)):
+			raise DBException('You have not permissions to create tasks on this project')
 		if (self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
 			Task.state != STAGE_TASK_FINISHED).filter(Task.id != self.keys[0]['value']).all())) or\
 			(not self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
@@ -486,6 +488,7 @@ class ViewTables(QtGui.QWidget):
 		self.fillCells()
 		self.disableButtons()
 
+		
 	def fillHeaders(self):
 		#self.headers = appInst.getHeadersWithForeignValues(self.tableName)
 		self.ui.tableWidget.setColumnCount(len(self.headers))
@@ -514,7 +517,6 @@ class ViewTables(QtGui.QWidget):
 		if self.isReport:
 			newitem = QtGui.QTableWidgetItem(str(appInst.cntSum()))
 			self.ui.tableWidget.setItem(row + 1, column, newitem)
-			
 			
 		self.primaryKeys = self.findPrimaryKeys()
 		
@@ -652,6 +654,20 @@ class ViewTableContracts(ViewTables):
 		rec = ChangeRecordContracts(self, self.tableName, self.primaryKeys[row])
 		rec.open()
 
+	def deleteRecord(self):
+		msg = QtGui.QMessageBox.question(self, 'Message',
+			'Are you sure to delete this record ?',
+			QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+		if msg == QtGui.QMessageBox.Yes:
+			row = self.ui.tableWidget.currentRow()
+			if len(dbi.session.execute('''
+				select 1 from projectemployees as a, employees as b, contracts as c, 
+				projects as d where a.projectId = c.projectId and a.employeeId = b.id and 
+				b.companyId = c.companyId and c.id = %s''' % self.primaryKeys[row][0]['value']).fetchall()):
+				raise DBException('There are employees of this company that are assigned on this project')
+			appInst.delete(self.tableName, self.primaryKeys[row])
+			appInst.updateTableViews()
+
 	def disableButtons(self):
 		super(ViewTableContracts, self).disableButtons()
 		#disable = not (appInst.isAdmin() and len(self.ui.tableWidget.selectedItems()))
@@ -671,6 +687,20 @@ class ViewTableProjectEmployees(ViewTables):
 		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordProjectEmployees(self, self.tableName, self.primaryKeys[row])
 		rec.open()
+
+	def deleteRecord(self):
+		msg = QtGui.QMessageBox.question(self, 'Message',
+			'Are you sure to delete this record ?',
+			QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+		if msg == QtGui.QMessageBox.Yes:
+			row = self.ui.tableWidget.currentRow()
+			if len(dbi.session.execute('''
+				select 1 from tasks as a, projectemployees as b where 
+				a.projectId = b.projectId and a.employeeId = b.employeeId and 
+				a.state != %s''' % STAGE_TASK_FINISHED).fetchall()):
+				raise DBException('There are unfinished tasks and on this project assigned on this employee ')
+			appInst.delete(self.tableName, self.primaryKeys[row])
+			appInst.updateTableViews()
 
 	def disableButtons(self):
 		canAdd = appInst.isAdmin() or appInst.isManager()

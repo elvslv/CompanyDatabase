@@ -6,21 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>991</width>
-    <height>451</height>
+    <width>990</width>
+    <height>456</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QComboBox" name="projectsComboBox">
+  <widget class="QWebView" name="webView">
    <property name="geometry">
     <rect>
-     <x>90</x>
-     <y>10</y>
-     <width>141</width>
-     <height>22</height>
+     <x>0</x>
+     <y>40</y>
+     <width>961</width>
+     <height>401</height>
     </rect>
+   </property>
+   <property name="url">
+    <url>
+     <string>about:blank</string>
+    </url>
    </property>
   </widget>
   <widget class="QLabel" name="label">
@@ -36,10 +41,20 @@
     <string>Select project</string>
    </property>
   </widget>
+  <widget class="QComboBox" name="projectsComboBox">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>10</y>
+     <width>141</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
   <widget class="QPushButton" name="generateBtn">
    <property name="geometry">
     <rect>
-     <x>250</x>
+     <x>290</x>
      <y>10</y>
      <width>101</width>
      <height>23</height>
@@ -47,21 +62,6 @@
    </property>
    <property name="text">
     <string>Generate diagram</string>
-   </property>
-  </widget>
-  <widget class="QWebView" name="webView">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>40</y>
-     <width>961</width>
-     <height>401</height>
-    </rect>
-   </property>
-   <property name="url">
-    <url>
-     <string>about:blank</string>
-    </url>
    </property>
   </widget>
  </widget>
