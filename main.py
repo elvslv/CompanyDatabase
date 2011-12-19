@@ -288,10 +288,9 @@ class App:
 			if 'projectId' in filterParams:
 				qStr += ' and b.projectId = %s' % filterParams['projectId']
 		res = dbi.session.execute(qStr).fetchone()[0]
-		return datetime.timedelta(seconds = int(res))
+		return datetime.timedelta(seconds = int(res)) if res else 0
 
 	def getNotEmptyProjects(self):
-		#dbi.query(Project).filter(Project.id == Task.projectId).all()
 		return dbi.session.execute('''select * from projects where id in 
 			(select projectId from tasks)''').fetchall()
 
