@@ -149,18 +149,24 @@ class ChangeRecord(QtGui.QDialog):
 			self.values.append({'name': edit.field, 'value': self.getValue(edit)})
 	
 	def addRecord(self):
-		self.getValues()
-		appInst.insert(self.table, self.values)
-		appInst.updateTableViews()
-		self.close()
-
+		try:
+			self.getValues()
+			appInst.insert(self.table, self.values)
+			appInst.updateTableViews()
+			self.close()
+		except IntegrityError:
+			showMessage('Error', 'The same record already exists')
+			
 	def editRecord(self):
-		values = dict()
-		for i, edit in enumerate(self.edits):
-			values[edit.field] = self.getValue(edit)
-		appInst.update(self.table, self.keys, values)
-		appInst.updateTableViews()
-		self.close()
+		try:
+			values = dict()
+			for i, edit in enumerate(self.edits):
+				values[edit.field] = self.getValue(edit)
+			appInst.update(self.table, self.keys, values)
+			appInst.updateTableViews()
+			self.close()
+		except IntegrityError:
+			showMessage('Error', 'The same record already exists')
 
 	def change(self):
 		if self.rec:
@@ -210,6 +216,10 @@ class ChangeRecordUsers(ChangeRecord):
 	
 	def checkCorrectness(self):
 		super(ChangeRecordUsers, self).checkCorrectness()
+		if not (self.rec or appInst.isAdmin()) or (self.rec and\
+			not appInst.isAdmin() and (self.values[2]['value'] != self.rec.admin or\
+			self.values[0]['value'] != self.rec.login)):
+			raise DBException('You have not permissions for this operation')
 		correct = True
 		for edit in self.edits:
 			if edit.field == 'login':
@@ -611,15 +621,17 @@ class ViewTableUsers(ViewTables):
 
 	def disableButtons(self):
 		self.ui.addRecordButton.setDisabled(not appInst.isAdmin())
-		disable = not (appInst.isAdmin() and len(self.ui.tableWidget.selectedItems()))
+		canDelete= (appInst.isAdmin() and len(self.ui.tableWidget.selectedItems()))
+		canChange = canDelete
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			user = appInst.getRecord('users', self.primaryKeys[row])
-			disable = user.login != appInst.getLogin() and not appInst.isAdmin()
+			canChange = canChange or user.login == appInst.getLogin()
+			canDelete = canDelete and user.login != appInst.getLogin()
 		
-		self.ui.editRecordButton.setDisabled(disable)
-		disable = disable or (user.admin and len(appInst.getAdmins()) == 1)
-		self.ui.deleteRecordButton.setDisabled(disable)
+		self.ui.editRecordButton.setDisabled(not canChange)
+		#disable = disable or (user.admin and len(appInst.getAdmins()) == 1)
+		self.ui.deleteRecordButton.setDisabled(not canDelete)
 
 class ViewTableEmployees(ViewTables):
 	def __init__(self, parent):
