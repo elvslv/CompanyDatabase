@@ -303,12 +303,16 @@ class ChangeRecordProjects(ChangeRecord):
 		
 	def checkCorrectness(self):
 		super(ChangeRecordProjects, self).checkCorrectness()
+		if not (self.rec or appInst.isAdmin()) or (self.rec and\
+			not appInst.isAdmin() and (self.values[0]['value'] != self.rec.name or\
+			datetime.datetime.strptime(str(self.values[1]['value']), "%Y-%m-%dT%H:%M:%S") != self.rec.startDate)):
+			raise DBException('You have not permissions for this operation')
 		if self.rec:
 			startDate = self.values[1]['value']
 			if len(dbi.session.execute('''select 1 from jobs as a, tasks as b, 
-				projects as c where a.taskId = b.id and c.name = "%s" and 
-				b.projectId = c.id and unix_timestamp(a.startDate) < %s''' % (
-				self.rec[0], QtCore.QDateTime.fromString(startDate).toTime_t())).fetchall()):
+				projects as c where a.taskId = b.id and c.id = %s and 
+				b.projectId = c.id and unix_timestamp(a.startDate) < %s - 2971032510''' % (
+				self.keys[0]['value'], QtCore.QDateTime.fromString(startDate).toTime_t())).fetchall()):
 				raise DBException('Task jobs can not start earlier than project')
 		self.change()
 
@@ -660,6 +664,19 @@ class ViewTableProjects(ViewTables):
 		row = self.ui.tableWidget.currentRow()
 		rec = ChangeRecordProjects(self, self.tableName, self.primaryKeys[row])
 		rec.open()
+
+	def disableButtons(self):
+		print 'dis'
+		canAdd = appInst.isAdmin()
+		self.ui.addRecordButton.setDisabled(not canAdd)
+		canChange = appInst.isAdmin() and len(self.ui.tableWidget.selectedItems())
+		if len(self.ui.tableWidget.selectedItems()):
+			row = self.ui.tableWidget.currentRow()
+			project = appInst.getRecord('projects', self.primaryKeys[row])
+			canChange = canChange or appInst.isManagerOnProject(self.primaryKeys[row][0]['value'])
+		self.ui.editRecordButton.setDisabled(not canChange)
+		canDelete = canAdd and len(self.ui.tableWidget.selectedItems())
+		self.ui.deleteRecordButton.setDisabled(not canDelete)
 
 class ViewTableContracts(ViewTables):
 	def __init__(self, parent):
