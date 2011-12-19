@@ -85,12 +85,10 @@ class App:
 				columns.append(foreignColumn)
 			else:
 				columns.append(column)
-		print tableName
 		if tableName == 'tasksDependencies':
 			q = dbi.session.execute('''select a.name, b.name from tasks as a, 
 				tasks as b, tasksDependencies as c
 				where a.id = c.masterId and b.id = c.slaveId''').fetchall()
-			print q
 			return q
 		elif tableName == 'jobs' and isReport:
 			qStr = '''select c.name, b.name, a.description, unix_timestamp(a.completionDate) 
@@ -177,7 +175,6 @@ class App:
 
 	def updateTableViews(self):
 		for table in self.tables:
-			print table
 			table.fillCells()
 			
 	def disableButtons(self):

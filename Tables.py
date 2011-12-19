@@ -373,8 +373,17 @@ class ChangeRecordTasks(ChangeRecord):
 		projectId = self.values[1]['value']
 		employeeId = self.values[2]['value']
 		checkCorrectProjectAndContract(projectId, employeeId)
+		
 		if not (appInst.isAdmin() or appInst.isManagerOnProject(projectId)):
-			raise DBException('You have not permissions to create tasks on this project')
+			if not self.rec:
+				raise DBException('You have not permissions to create tasks on this project')
+			if not appInst.isTaskDeveloper(self.keys[0]['value']):
+				raise DBException('You have not permissions to change this task')
+				
+			for val in self.values:
+				if str(getattr(self.rec, val['name'])) != str(val['value']) and val['name'] != 'state':
+					raise DBException('You have not permissions to change task attributes')
+					
 		if (self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
 			Task.state != STAGE_TASK_FINISHED).filter(Task.id != self.keys[0]['value']).all())) or\
 			(not self.rec and len(dbi.query(Task).filter(Task.employeeId == employeeId).filter(
@@ -732,13 +741,14 @@ class ViewTableTasks(ViewTables):
 		canAdd = appInst.isAdmin() or appInst.isManager()
 		self.ui.addRecordButton.setDisabled(not canAdd)
 		canChange = appInst.isAdmin() and len(self.ui.tableWidget.selectedItems())
+		canDelete = False
 		if len(self.ui.tableWidget.selectedItems()):
 			row = self.ui.tableWidget.currentRow()
 			task = appInst.getRecord('tasks', self.primaryKeys[row])
-			canChange = canChange or appInst.isManagerOnProject(task.projectId) or\
-				appInst.isTaskDeveloper(self.primaryKeys[row][0])
+			canDelete = canChange or appInst.isManagerOnProject(task.projectId)
+			canChange = canDelete or appInst.isTaskDeveloper(self.primaryKeys[row][0]['value'])
 		self.ui.editRecordButton.setDisabled(not canChange)
-		self.ui.deleteRecordButton.setDisabled(not canChange)
+		self.ui.deleteRecordButton.setDisabled(not canDelete)
 
 
 class ViewTableJobs(ViewTables):
